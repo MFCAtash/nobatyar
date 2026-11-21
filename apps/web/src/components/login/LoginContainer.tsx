@@ -66,7 +66,7 @@ export function LoginContainer() {
     <LoginView
       step={step} phone={phone} code={code} busy={busy} error={err} wait={wait}
       onPhone={setPhone} onCode={onCode} onRequest={(e) => void requestCode(e)}
-      onVerify={(e) => { e.preventDefault(); void verifyWith(code); }}
+      onVerify={(e) => { e.preventDefault(); if (!code || busy) return; void verifyWith(code); }}
       onEditPhone={() => { setStep("phone"); setCode(""); setErr(null); }}
     />
   );
