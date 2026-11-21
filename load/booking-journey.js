@@ -21,7 +21,7 @@ export const options = {
 
 export default function () {
   const startedAt = Date.now();
-  const search = http.get(`${BASE}/doctors?q=قلب&limit=5`, { tags: { endpoint: "search" } });
+  const search = http.get(`${BASE}/doctors?q=${encodeURIComponent("قلب")}&limit=5`, { tags: { endpoint: "search" } });
   latency.add(Date.now() - startedAt);
   const okSearch = check(search, { "search 200": (r) => r.status === 200 });
   errorRate.add(!okSearch);

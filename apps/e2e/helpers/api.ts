@@ -33,8 +33,8 @@ export async function loginViaUi(page: Page, request: APIRequestContext, phone: 
   await page.getByLabel("شماره‌ی موبایل").fill(phone);
   await page.getByRole("button", { name: "دریافت کد تأیید" }).click();
   const code = await otpFor(request, phone);
-  await page.getByLabel(/کد تأیید ارسال‌شده/).fill(code);
-  await page.getByRole("button", { name: "ورود", exact: true }).click();
+  await page.locator('input[autocomplete="one-time-code"]').fill(code);
+  await page.getByRole("button", { name: "ورود", exact: true }).click({ force: true });
   if (fullName) {
     await expect(page).toHaveURL(/\/onboarding/);
     await page.getByLabel("نام و نام خانوادگی").fill(fullName);
