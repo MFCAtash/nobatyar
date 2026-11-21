@@ -27,6 +27,6 @@ import { moduleEnabled } from "../common/feature-flags";
     { provide: REFUND_WORKER_CONFIG, useFactory: () => loadRefundWorkerConfig(process.env, moduleEnabled("FF_M4_FINANCE_AUTO")) },
     PaymentSettlement, PaymentService, PaymentReconciler, RefundService, RefundWorkerService,
   ],
-  exports: [PaymentService, PaymentSettlement, PaymentReconciler, RefundService, RefundWorkerService, PAYMENT_CONFIG],
+  exports: [PaymentService, PaymentSettlement, PaymentReconciler, RefundService, RefundWorkerService, PAYMENT_CONFIG, REFUND_WORKER_CONFIG],
 })
 export class PaymentModule {}

@@ -9,6 +9,17 @@ const API_URL = process.env.API_URL ?? "http://localhost:3000";
 // آدرس عمومی LiveKit (همان LIVEKIT_URL سمت API). مرورگر مستقیم به آن وصل می‌شود، پس باید در CSP مجاز باشد.
 // ws(s) برای سیگنالینگ؛ http(s) برای اعتبارسنجی/fallback ی کلاینت.
 // آدرس عمومی ذخیره‌ساز (MinIO پشت Caddy): آپلود presigned PUT از مرورگر مستقیم به آن می‌رود ⇒ باید در CSP باشد.
+// WebSocket چت: وقتی کلاینت مستقیماً به API وصل میشود، origin آن باید در connect-src CSP باشد.
+const SOCKET = (process.env.NEXT_PUBLIC_SOCKET_URL ?? "").trim().replace(/\/+$/, "");
+let socketOrigin = "";
+try {
+  if (SOCKET) {
+    const u = new URL(SOCKET);
+    // CSP connect-src برای ارتقای WebSocket بهSchemes ws/wss هم نیاز دارد.
+    socketOrigin = `${u.protocol === "https:" ? "wss" : "ws"}://${u.host} ${u.origin}`;
+  }
+} catch { /* آدرس نامعتبر ⇒ نادیده گرفته میشود */ }
+
 const STORAGE = (process.env.STORAGE_PUBLIC_URL ?? "").trim().replace(/\/+$/, "");
 const storageOrigin = /^https?:\/\/[^/\s]+$/i.test(STORAGE) ? STORAGE : "";
 const LIVEKIT = (process.env.LIVEKIT_PUBLIC_URL ?? "").trim().replace(/\/+$/, "");
@@ -56,7 +67,7 @@ export default {
           // CSP پایه (Next بدون nonce به inline script نیاز دارد). CSP مبتنی بر nonce در فاز ۹.
           {
             key: "Content-Security-Policy",
-            value: `default-src 'self'; img-src 'self' data: blob:${storageOrigin ? " " + storageOrigin : ""}; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'${devEval}; connect-src 'self'${storageOrigin ? " " + storageOrigin : ""}${lkOrigins ? " " + lkOrigins : ""}${sentryOrigin ? " " + sentryOrigin : ""}; media-src 'self' blob: mediastream:; worker-src 'self' blob:; font-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`,
+            value: `default-src 'self'; img-src 'self' data: blob:${storageOrigin ? " " + storageOrigin : ""}; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'${devEval}; connect-src 'self'${socketOrigin ? " " + socketOrigin : ""}${storageOrigin ? " " + storageOrigin : ""}${lkOrigins ? " " + lkOrigins : ""}${sentryOrigin ? " " + sentryOrigin : ""}; media-src 'self' blob: mediastream:; worker-src 'self' blob:; font-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`,
           },
         ],
       },

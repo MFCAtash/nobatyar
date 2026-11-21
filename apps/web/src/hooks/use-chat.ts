@@ -96,7 +96,9 @@ export function useChat(conversationId: string) {
       const { io: ioConnect } = await import("socket.io-client");
 
       // access token فقط در حافظه‌ی api نگه‌داری می‌شود؛ تابع auth در هر (re)connect توکن «تازه» را می‌گیرد
-      io = ioConnect("/chat", {
+      // Next.js rewrites ارتقای WebSocket را پروکسی نمیکند ⇒ در dev/CI مستقیماً به منبع API وصل میشویم.
+      const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL ?? "/chat";
+      io = ioConnect(socketUrl, {
         path:        "/socket.io",
         transports:  ["websocket"],
         auth:        (cb: (d: { token: string | null }) => void) => cb({ token: api.getToken() }),
