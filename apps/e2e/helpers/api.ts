@@ -54,7 +54,9 @@ export async function searchAndBook(page: Page, doctorName: string, token: strin
   await expect(page.getByRole("heading", { name: doctorName })).toBeVisible();
   await page.getByRole("group", { name: "روز" }).getByRole("button").nth(1).click(); // فردا؛ همیشه اسلات دارد
   await page.getByRole("group", { name: "ساعت‌های خالی" }).getByRole("button").first().click();
+  await page.getByRole("button", { name: "ادامه", exact: true }).click(); // گام ۰ ← ۱ (نوع ویزیت و دلیل)
   if (reason) await page.getByLabel(/دلیل مراجعه/).fill(reason);
+  await page.getByRole("button", { name: "ادامه", exact: true }).click(); // گام ۱ ← ۲ (تأیید نهایی)
   await page.getByRole("button", { name: "ثبت نوبت", exact: true }).click();
   await expect(page).toHaveURL(/\/appointments\/[0-9a-f-]{36}$/);
   return new URL(page.url()).pathname;
