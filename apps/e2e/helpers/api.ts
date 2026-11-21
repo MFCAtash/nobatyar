@@ -34,7 +34,8 @@ export async function loginViaUi(page: Page, request: APIRequestContext, phone: 
   await page.getByRole("button", { name: "دریافت کد تأیید" }).click();
   const code = await otpFor(request, phone);
   await page.locator('input[autocomplete="one-time-code"]').fill(code);
-  await page.getByRole("button", { name: "ورود", exact: true }).click({ force: true });
+  await page.locator('form button.btn-primary').last().click({ force: true, timeout: 15_000 });
+  await expect(page).not.toHaveURL(/\/login/, { timeout: 15_000 });
   if (fullName) {
     await expect(page).toHaveURL(/\/onboarding/);
     await page.getByLabel("نام و نام خانوادگی").fill(fullName);
