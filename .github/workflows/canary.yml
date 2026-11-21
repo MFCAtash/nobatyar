@@ -55,7 +55,7 @@ jobs:
         env:
           PROMETHEUS_URL: ${{ vars.PROMETHEUS_URL }}
           MAX_BURN_RATE: "0.75"
-        run: sh scripts/canary-gate.sh 'max(slo_burn_rate_30d)'
+        run: node scripts/canary-gate.mjs
 
       - name: Apply rollout manifest
         run: |
@@ -67,7 +67,7 @@ jobs:
         run: |
           for step in 25 50 100; do
             sleep 600  # 10 دقیقه مشاهده در هر مرحله
-            if ! sh scripts/canary-gate.sh 'max(slo_burn_rate_5m)' 2>/dev/null; then
+            if ! MAX_BURN_RATE=1 node scripts/canary-gate.mjs >/dev/null 2>&1; then
               echo "::error::canary failed at ${step}% — aborting"
               kubectl argo rollouts abort rollout/nobatyar-api -n "$NAMESPACE"
               exit 1

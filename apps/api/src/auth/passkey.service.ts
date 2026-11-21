@@ -10,7 +10,7 @@ import { AuditService } from "../audit/audit.service";
 import type { AuthUser } from "../common/decorators";
 import { PrismaService } from "../prisma/prisma.service";
 import { KV_STORE, KeyValueStore } from "../redis/kv-store";
-import { ChallengeStore, readChallenge } from "./passkey-challenge";
+import { ChallengeStore, readChallenge, webauthnConfig } from "./passkey-challenge";
 import { RateLimiter } from "./rate-limit";
 
 /**
@@ -31,19 +31,17 @@ export class PasskeyService {
     this.limiter = new RateLimiter(kv);
   }
 
-  /** دامنهٔ واقعی از WEB_ORIGIN/CORS_ORIGINS خوانده میشود؛ override صریح اختیاری است. */
+  /** دامنهٔ واقعی بهصورت خودکار استنتاج میشود و قابل تست مستقل است. */
+  private get webauthn() {
+    return webauthnConfig(process.env);
+  }
+
   private get origin(): string {
-    const explicit = process.env.WEBAUTHN_ORIGIN;
-    if (explicit) return explicit.replace(/\/$/, "");
-    const configured = process.env.WEB_ORIGIN ?? process.env.CORS_ORIGINS?.split(",")[0]?.trim();
-    if (configured && /^https?:\/\//.test(configured)) return configured.replace(/\/$/, "");
-    return "http://localhost:3001";
+    return this.webauthn.origin;
   }
 
   private get rpID(): string {
-    const explicit = process.env.WEBAUTHN_RP_ID;
-    if (explicit) return explicit.replace(/^https?:\/\//, "").replace(/:\d+$/, "").replace(/\/$/, "");
-    try { return new URL(this.origin).hostname; } catch { return "localhost"; }
+    return this.webauthn.rpID;
   }
 
   async registrationOptions(u: AuthUser) {

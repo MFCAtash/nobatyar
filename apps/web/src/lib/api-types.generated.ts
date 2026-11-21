@@ -715,6 +715,33 @@ export interface Operations {
     body: undefined;
     response: unknown;
   };
+  "GET /demo/config": {
+    params: undefined;
+    query: undefined;
+    body: undefined;
+    response: {
+      enabled: boolean;
+      role: string | null;
+    };
+  };
+  "POST /demo/login": {
+    params: undefined;
+    query: undefined;
+    body: undefined;
+    response: {
+      accessToken: string;
+      tokenType: "Bearer";
+      expiresIn: number;
+    };
+  };
+  "GET /demo/status": {
+    params: undefined;
+    query: undefined;
+    body: undefined;
+    response: {
+      demo: boolean;
+    };
+  };
   "GET /doctor/stats/daily": {
     params: undefined;
     query: undefined;
@@ -1445,6 +1472,9 @@ export const OPERATIONS = {
   "GET /conversations": { method: "GET", path: "/conversations", public: false, idempotency: null, summary: "فهرست مکالمات" },
   "GET /conversations/{id}/messages": { method: "GET", path: "/conversations/{id}/messages", public: false, idempotency: null, summary: "پیامهای مکالمه" },
   "GET /conversations/messages/{msgId}/attachment": { method: "GET", path: "/conversations/messages/{msgId}/attachment", public: false, idempotency: null, summary: "لینک موقت پیوست پیام" },
+  "GET /demo/config": { method: "GET", path: "/demo/config", public: true, idempotency: null, summary: "وضعیت ورود دمو (فقط غیر production)" },
+  "POST /demo/login": { method: "POST", path: "/demo/login", public: true, idempotency: null, summary: "ورود خودکار دمو با نشست استاندارد" },
+  "GET /demo/status": { method: "GET", path: "/demo/status", public: false, idempotency: null, summary: "وضعیت ورود دمو" },
   "GET /doctor/stats/daily": { method: "GET", path: "/doctor/stats/daily", public: false, idempotency: null, summary: "آمار روزانه پزشک (Read Model)" },
   "GET /doctor/stats/summary": { method: "GET", path: "/doctor/stats/summary", public: false, idempotency: null, summary: "خلاصه عملکرد پزشک" },
   "GET /doctors": { method: "GET", path: "/doctors", public: true, idempotency: null, summary: "جستجوی پزشکان فهرستشده" },

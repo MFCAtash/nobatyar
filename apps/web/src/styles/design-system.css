@@ -61,6 +61,7 @@
   .prop-meta { font-size: var(--fs-xs); }
   .prop-summary { gap: 8px; }
   .prop-chosen { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .demo-login-error { position: fixed; inset-block-end: 12px; inset-inline-start: 12px; z-index: var(--z-toast); background: var(--panel); border: 1px solid var(--red); color: var(--ink); border-radius: var(--radius-sm); padding: 8px 12px; font-size: var(--fs-sm); }
   .cmd-overlay { position: fixed; inset: 0; z-index: var(--z-modal); background: var(--scrim); display: flex; justify-content: center; padding-top: 12vh; }
   .cmd-panel { width: min(640px, 100%); max-height: 70vh; overflow-y: auto; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-card); box-shadow: 0 0 50px var(--teal-glow); display: grid; gap: 8px; padding: 12px; }
   .cmd-head { display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border-soft); padding-bottom: 8px; }

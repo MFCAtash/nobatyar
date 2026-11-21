@@ -239,6 +239,9 @@ export const ROUTES: RouteDoc[] = [
   { method: "post", path: "/wallet/insurance", tag: "Wallet", summary: "افزودن بیمه (شماره رمزنگاریشده)", auth: "patient", body: insuranceSchema, ok: { status: 201 } },
   { method: "post", path: "/wallet/insurance/settle", tag: "Wallet", summary: "تسویه سهم بیمه با پزشک", auth: "admin", body: settleSchema, ok: { status: 201 } },
 
+  { method: "get", path: "/demo/config", tag: "Demo", summary: "وضعیت ورود دمو (فقط غیر production)", auth: "public", ok: { status: 200, schema: obj({ enabled: { type: "boolean" }, role: nullable(str()) }) } },
+  { method: "get", path: "/demo/status", tag: "Demo", summary: "وضعیت ورود دمو", auth: "user", ok: { status: 200, schema: obj({ demo: { type: "boolean" } }) } },
+  { method: "post", path: "/demo/login", tag: "Demo", summary: "ورود خودکار دمو با نشست استاندارد", auth: "public", ok: { status: 201, schema: tokens }, errors: { 403: "demo_disabled", 404: "demo_user_missing" } },
   { method: "get", path: "/doctor/stats/daily", tag: "Analytics", summary: "آمار روزانه پزشک (Read Model)", auth: "doctor", ok: { status: 200 } },
   { method: "get", path: "/doctor/stats/summary", tag: "Analytics", summary: "خلاصه عملکرد پزشک", auth: "doctor", ok: { status: 200 } },
 ];

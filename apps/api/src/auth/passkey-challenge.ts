@@ -13,6 +13,19 @@ export function readChallenge(clientDataJSON: string): string {
   }
 }
 
+/** استنتاج دامنهٔ واقعی از متغیرهای محیطی (قابل تست مستقل). */
+export function webauthnConfig(env: NodeJS.ProcessEnv = process.env): { origin: string; rpID: string } {
+  const explicitOrigin = env.WEBAUTHN_ORIGIN?.replace(/\/$/, "");
+  const configured = explicitOrigin ?? env.WEB_ORIGIN ?? env.CORS_ORIGINS?.split(",")[0]?.trim();
+  const origin = configured && /^https?:\/\//.test(configured) ? configured.replace(/\/$/, "") : "http://localhost:3001";
+  const explicitRp = env.WEBAUTHN_RP_ID?.replace(/^https?:\/\//, "").replace(/:\d+$/, "").replace(/\/$/, "");
+  let rpID = explicitRp;
+  if (!rpID) {
+    try { rpID = new URL(origin).hostname; } catch { rpID = "localhost"; }
+  }
+  return { origin, rpID };
+}
+
 interface Pending {
   userId: string | null;
   expiresAt: number;

@@ -5270,6 +5270,143 @@
         }
       }
     },
+    "/demo/config": {
+      "get": {
+        "tags": [
+          "Demo"
+        ],
+        "summary": "وضعیت ورود دمو (فقط غیر production)",
+        "operationId": "getDemoConfig",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "موفق",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "role": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "enabled",
+                    "role"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/demo/login": {
+      "post": {
+        "tags": [
+          "Demo"
+        ],
+        "summary": "ورود خودکار دمو با نشست استاندارد",
+        "operationId": "postDemoLogin",
+        "security": [],
+        "responses": {
+          "201": {
+            "description": "موفق",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "accessToken": {
+                      "type": "string"
+                    },
+                    "tokenType": {
+                      "const": "Bearer"
+                    },
+                    "expiresIn": {
+                      "type": "integer",
+                      "description": "ثانیه"
+                    }
+                  },
+                  "required": [
+                    "accessToken",
+                    "tokenType",
+                    "expiresIn"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "demo_disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "demo_user_missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/demo/status": {
+      "get": {
+        "tags": [
+          "Demo"
+        ],
+        "summary": "وضعیت ورود دمو",
+        "operationId": "getDemoStatus",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "موفق",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "demo": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "demo"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
     "/doctor/stats/daily": {
       "get": {
         "tags": [

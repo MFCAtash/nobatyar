@@ -8,6 +8,7 @@ import "@fontsource-variable/inter";
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { CommandPalette } from "@/components/CommandPalette";
+import { DemoAutoLogin } from "@/components/DemoAutoLogin";
 import { Header } from "@/components/Header";
 import { OfflineBanner } from "@/components/kit/OfflineBanner";
 import { Providers } from "@/components/Providers";
@@ -43,6 +44,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <ThemeProvider>
           <Providers>
             <Header />
+            <DemoAutoLogin />
             <CommandPalette />
             <main id="main" className="container page">{children}</main>
             <OfflineBanner />

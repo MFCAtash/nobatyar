@@ -4,6 +4,7 @@ import { AUTH_CONFIG, AuthConfig } from "../config/auth.config";
 import { KV_STORE, KeyValueStore } from "../redis/kv-store";
 import { SMS_PROVIDER, SmsProvider } from "../sms/sms.provider";
 import { AuthController } from "./auth.controller";
+import { DemoController } from "./demo.controller";
 import { AuthService } from "./auth.service";
 import { ConsentGuard, JwtAuthGuard, RolesGuard } from "./guards";
 import { MfaController } from "./mfa.controller";
@@ -17,7 +18,7 @@ import { TokenService } from "./token.service";
 
 @Global()
 @Module({
-  controllers: [AuthController, MfaController, PasskeyController],
+  controllers: [AuthController, MfaController, PasskeyController, DemoController],
   providers: [
     {
       provide: OtpService,

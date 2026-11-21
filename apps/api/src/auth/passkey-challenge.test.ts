@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { ChallengeStore, readChallenge } from "./passkey-challenge";
+import { ChallengeStore, readChallenge, webauthnConfig } from "./passkey-challenge";
+
+describe("webauthnConfig", () => {
+  it("دامنه را از WEB_ORIGIN استنتاج میکند", () => {
+    expect(webauthnConfig({ WEB_ORIGIN: "https://nobatyar.ir/" })).toEqual({ origin: "https://nobatyar.ir", rpID: "nobatyar.ir" });
+  });
+  it("override صریح مقدم است", () => {
+    expect(webauthnConfig({ WEB_ORIGIN: "https://a.ir", WEBAUTHN_ORIGIN: "https://b.ir", WEBAUTHN_RP_ID: "b.ir" })).toEqual({ origin: "https://b.ir", rpID: "b.ir" });
+  });
+  it("پیشفرض محلی هنگام نبود تنظیم", () => {
+    expect(webauthnConfig({})).toEqual({ origin: "http://localhost:3001", rpID: "localhost" });
+  });
+});
 
 describe("readChallenge", () => {
   it("چالش را از clientDataJSON استخراج میکند", () => {
