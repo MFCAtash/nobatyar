@@ -12,6 +12,9 @@ import { PaymentReconciler } from "./payment-reconciler";
 import { PaymentService } from "./payment.service";
 import { PaymentSettlement } from "./payment-settlement";
 import { REFUND_APPROVAL_CONFIG, RefundService } from "./refund.service";
+import { REFUND_WORKER_CONFIG, loadRefundWorkerConfig } from "./refund-worker.config";
+import { RefundWorkerService } from "./refund-worker.service";
+import { moduleEnabled } from "../common/feature-flags";
 
 @Module({
   imports: [PrismaModule, AuditModule, NotificationModule, AppointmentsModule],
@@ -21,8 +24,9 @@ import { REFUND_APPROVAL_CONFIG, RefundService } from "./refund.service";
     { provide: PAYMENT_CONFIG, useFactory: () => loadPaymentConfig() },
     { provide: GatewayRegistry, inject: [PAYMENT_CONFIG], useFactory: (cfg: PaymentConfig) => buildGatewayRegistry(cfg) },
     { provide: REFUND_APPROVAL_CONFIG, inject: [PAYMENT_CONFIG], useFactory: (c: PaymentConfig) => ({ enabled: c.refundDualApproval, minAmountRial: c.refundDualApprovalMinRial }) },
-    PaymentSettlement, PaymentService, PaymentReconciler, RefundService,
+    { provide: REFUND_WORKER_CONFIG, useFactory: () => loadRefundWorkerConfig(process.env, moduleEnabled("FF_M4_FINANCE_AUTO")) },
+    PaymentSettlement, PaymentService, PaymentReconciler, RefundService, RefundWorkerService,
   ],
-  exports: [PaymentService, PaymentSettlement, PaymentReconciler, RefundService, PAYMENT_CONFIG],
+  exports: [PaymentService, PaymentSettlement, PaymentReconciler, RefundService, RefundWorkerService, PAYMENT_CONFIG],
 })
 export class PaymentModule {}

@@ -2,7 +2,7 @@ import { EmptyState, Skeleton, Stepper, type Step } from "@/components/kit";
 import { ErrorBox } from "@/components/ui";
 import { dayLabelFromDateStr, formatDateTime, formatTime } from "@/lib/format";
 import { KIND_LABEL } from "@/lib/messages";
-import type { AppointmentKind } from "@/lib/types";
+import type { AppointmentKind, RankedSlotView } from "@/lib/types";
 
 export const BOOKING_STEPS: Step[] = [
   { id: "time", label: "انتخاب زمان" },
@@ -15,6 +15,8 @@ export interface BookingViewProps {
   day: string;
   /** undefined = در حال بارگذاری */
   slots: { startsAt: string; endsAt: string }[] | undefined;
+  /** M3 — پیشنهادهای رتبهبندیشده سرور (اختیاری) */
+  suggestions?: RankedSlotView[];
   slot: string | null;
   kind: AppointmentKind;
   reason: string;
@@ -49,6 +51,18 @@ export function BookingView(p: BookingViewProps) {
 
           {p.step === 0 && (
             <>
+              {p.suggestions && p.suggestions.length > 0 && (
+                <div className="note-box stack gap-2" aria-label="پیشنهادهای برتر">
+                  <strong>پیشنهادهای برتر برای شما</strong>
+                  {p.suggestions.map((s) => (
+                    <button key={s.startsAt} type="button" className="row between slot" aria-pressed={p.slot === s.startsAt} onClick={() => p.onSlot(s.startsAt)}>
+                      <span className="num">{formatTime(s.startsAt)}</span>
+                      <span className="small">{s.reasonsFa.join(" · ")}</span>
+                      <span className="badge badge-info">{s.score}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="days" role="group" aria-label="روز">
                 {p.days.map((d) => <button key={d} type="button" aria-pressed={d === p.day} className="chip" onClick={() => p.onDay(d)}>{dayLabelFromDateStr(d)}</button>)}
               </div>

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
 import { useAuth } from "@/lib/auth-context";
 import { enqueue, remove, splitFresh, type Pending } from "@/lib/outbox";
+import { isAckSuccess, readPayload, sendPayload, wsErrorMessage, type AckResult, type SendOutcome } from "./chat-contract";
 
 export interface ChatMessage {
   id:              string;
@@ -33,9 +34,22 @@ interface State {
   /** userId → timeout id */
   typing:     Record<string, ReturnType<typeof setTimeout>>;
   typingUsers:string[];
+  /** خطای قابل نمایش (فاقد محتوای پیام/داده سلامت). */
+  error:      string | null;
 }
 
 const TYPING_CLEAR_MS = 3000;
+const ACK_TIMEOUT_MS = 5000;
+
+/** ارسال با تأیید سرور — برخلاف emit ساده، خطا را به client میرساند. */
+function emitWithAck(sock: Socket, event: string, payload: unknown): Promise<AckResult> {
+  return new Promise((resolve) => {
+    sock.timeout(ACK_TIMEOUT_MS).emit(event, payload, (err: Error | null, ack?: { ok?: boolean; messageId?: string }) => {
+      if (err) return resolve({ ok: false, error: err, ack });
+      resolve({ ok: true, ack });
+    });
+  });
+}
 
 export function useChat(conversationId: string) {
   const { api, status } = useAuth();
@@ -48,7 +62,7 @@ export function useChat(conversationId: string) {
   const [state, setState] = useState<State>({
     messages: [], hasMore: false, cursor: null,
     loading: false, connected: false,
-    typing: {}, typingUsers: [],
+    typing: {}, typingUsers: [], error: null,
   });
 
   // ─── بارگذاری تاریخچه ─────────────────────────────────────────────────────
@@ -69,7 +83,7 @@ export function useChat(conversationId: string) {
         loading:   false,
       }));
     } catch {
-      setState((s) => ({ ...s, loading: false }));
+      setState((s) => ({ ...s, loading: false, error: "تاریخچه پیامها بارگذاری نشد." }));
     }
   }, [api, conversationId, status]);
 
@@ -91,19 +105,31 @@ export function useChat(conversationId: string) {
       });
       socketRef.current = io;
 
-      io.on("connect", () => {
-        setState((s) => ({ ...s, connected: true }));
-        // join اتاق
-        io!.emit("join_conversation", conversationId);
+      io.on("connect", async () => {
+        setState((s) => ({ ...s, connected: true, error: null }));
+        // join اتاق — فقط زمانی که سرور عضویت را تأیید کند، اتاق واقعی است.
+        const joined = await emitWithAck(io!, "join_conversation", { conversationId });
+        if (!joined.ok) setState((s) => ({ ...s, error: wsErrorMessage(joined.error) }));
+
         // ارسال پیام‌های صف‌شده‌ی دوران قطعی (پیام‌های بیش از ۱۵ دقیقه‌ای فرستاده نمی‌شوند)
         const { fresh, stale } = splitFresh(pendingRef.current);
-        fresh.forEach((p) => io!.emit("send_message", { conversationId, body: p.body, kind: "TEXT" }));
+        const failed: Pending[] = [];
+        for (const p of fresh) {
+          const r = await emitWithAck(io!, "send_message", sendPayload(conversationId, p.body));
+          if (!isAckSuccess(r)) failed.push(p);
+        }
         if (stale.length) setExpiredCount((n) => n + stale.length);
-        if (pendingRef.current.length) setQueue([]);
+        setQueue(failed);
+        if (failed.length) setState((s) => ({ ...s, error: "برخی پیامهای صفشده ارسال نشدند." }));
       });
 
       io.on("disconnect", () => {
         setState((s) => ({ ...s, connected: false }));
+      });
+
+      // خطاهای سرور پیشتر بیسر و صدا نادیده گرفته میشدند.
+      io.on("exception", (err: unknown) => {
+        setState((s) => ({ ...s, error: wsErrorMessage(err) }));
       });
 
       io.on("new_message", (msg: ChatMessage) => {
@@ -112,8 +138,8 @@ export function useChat(conversationId: string) {
           ...s,
           messages: [...s.messages, msg],
         }));
-        // علامت خوانده
-        io!.emit("read_messages", { conversationId });
+        // علامت خوانده — قرارداد جدید با messageId اختیاری؛ قدیمیها هم کار میکنند.
+        io!.emit("read_messages", readPayload(conversationId, msg.id));
       });
 
       io.on("messages_read", (data: { conversationId: string; readerId: string }) => {
@@ -161,18 +187,23 @@ export function useChat(conversationId: string) {
   }, [conversationId, status, loadHistory]);
 
   // ─── ارسال پیام متنی ──────────────────────────────────────────────────────
-  /** ⇒ "sent" (فوری) | "queued" (در صف تا اتصال) | "full" | "empty" */
-  const sendText = useCallback((body: string): "sent" | "queued" | "full" | "empty" => {
+  /** فقط پس از ack سرور "sent" برمیگرداند؛ خطا را در state قرار میدهد. */
+  const sendText = useCallback(async (body: string): Promise<SendOutcome> => {
     const sock = socketRef.current;
-    if (sock?.connected) {
-      if (!body.trim()) return "empty";
-      sock.emit("send_message", { conversationId, body, kind: "TEXT" });
-      return "sent";
+    if (!sock?.connected) {
+      const r = enqueue(pendingRef.current, body);
+      if (!r.ok) return r.reason;
+      setQueue(r.queue);
+      return "queued";
     }
-    const r = enqueue(pendingRef.current, body);
-    if (!r.ok) return r.reason;
-    setQueue(r.queue);
-    return "queued";
+    if (!body.trim()) return "empty";
+    setState((s) => ({ ...s, error: null }));
+    const ack = await emitWithAck(sock, "send_message", sendPayload(conversationId, body));
+    if (!isAckSuccess(ack)) {
+      setState((s) => ({ ...s, error: wsErrorMessage(ack.error) }));
+      return "error";
+    }
+    return "sent";
   }, [conversationId, setQueue]);
 
   const cancelPending = useCallback((localId: string) => setQueue(remove(pendingRef.current, localId)), [setQueue]);
@@ -196,16 +227,17 @@ export function useChat(conversationId: string) {
     });
     if (!put.ok) throw new Error("upload_failed");
 
-    // مرحله ۳: ارسال پیام با objectKey
-    socketRef.current?.emit("send_message", {
-      conversationId,
-      body:           "",
-      kind:           file.type.startsWith("image/") ? "IMAGE" : "FILE",
-      objectKey,
-      attachmentName: file.name,
-      attachmentMime: file.type,
-      attachmentBytes:file.size,
-    });
+    // مرحله ۳: ارسال پیام با objectKey — بدون ack موفق نمیشماریم
+    const sock = socketRef.current;
+    if (!sock) throw new Error("disconnected");
+    const ack = await emitWithAck(sock, "send_message", sendPayload(
+      conversationId, "", file.type.startsWith("image/") ? "IMAGE" : "FILE",
+      { objectKey, attachmentName: file.name, attachmentMime: file.type, attachmentBytes: file.size },
+    ));
+    if (!isAckSuccess(ack)) {
+      setState((s) => ({ ...s, error: wsErrorMessage(ack.error) }));
+      throw new Error("send_failed");
+    }
   }, [api, conversationId]);
 
   // ─── ارسال typing indicator ───────────────────────────────────────────────
@@ -223,7 +255,9 @@ export function useChat(conversationId: string) {
     if (state.cursor) loadHistory(state.cursor);
   }, [loadHistory, state.cursor]);
 
-  const markRead = useCallback(() => { socketRef.current?.emit("read_messages", { conversationId }); }, [conversationId]);
+  const markRead = useCallback(() => {
+    socketRef.current?.emit("read_messages", readPayload(conversationId));
+  }, [conversationId]);
 
   return {
     messages:    state.messages,
@@ -239,6 +273,8 @@ export function useChat(conversationId: string) {
     pending,
     cancelPending,
     expiredCount,
+    error: state.error,
+    dismissError: () => setState((s) => ({ ...s, error: null })),
     dismissExpired: () => setExpiredCount(0),
   };
 }

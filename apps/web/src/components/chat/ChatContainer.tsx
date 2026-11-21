@@ -24,10 +24,13 @@ export function ChatContainer({ conversationId }: { conversationId: string }) {
 
   const onText = (v: string) => { setText(v); sendTyping(); };
 
-  const onSend = () => {
-    const r = sendText(text.trim());
+  const onSend = async () => {
+    const draft = text.trim();
+    const r = await sendText(draft);
     if (r === "full") { toast("صف ارسال پر است؛ تا برقراری اتصال صبر کنید.", "bad"); return; }
     if (r === "empty") return;
+    // در صورت خطا متن باقی میماند تا کاربر دوباره تلاش کند.
+    if (r === "error") { toast(chat.error ?? "ارسال پیام ناموفق بود.", "bad"); return; }
     setText("");
     if (r === "queued") toast("اتصال قطع است؛ پیام پس از اتصال ارسال می‌شود.", "info");
   };
@@ -50,7 +53,7 @@ export function ChatContainer({ conversationId }: { conversationId: string }) {
       meId={me?.id} messages={messages} pending={pending} expiredCount={chat.expiredCount}
       connected={chat.connected} hasMore={chat.hasMore} loading={chat.loading} peerTyping={chat.typingUsers.length > 0}
       text={text} uploading={uploading} uploadErr={uploadErr} bottomRef={bottomRef}
-      onText={onText} onSend={onSend} onFile={(f) => void onFile(f)} onLoadMore={chat.loadMore} onDownload={(id) => void onDownload(id)}
+      onText={onText} onSend={() => void onSend()} onFile={(f) => void onFile(f)} onLoadMore={chat.loadMore} onDownload={(id) => void onDownload(id)}
       onCancelPending={chat.cancelPending} onDismissError={() => setUploadErr(null)} onDismissExpired={chat.dismissExpired}
     />
   );

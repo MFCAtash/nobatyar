@@ -59,12 +59,19 @@ const MESSAGES: Record<string, string> = {
   expiry_in_past: "تاریخ انقضا باید در آینده باشد.",
   expiry_too_far: "انقضای اشتراک حداکثر یک سال است.",
   cannot_review_own_application: "درخواست خودتان را نمی‌توانید بررسی کنید.",
+  mfa_required: "تأیید دومرحلهای لازم است.",
+  mfa_invalid_code: "کد تأیید نادرست است. دوباره امتحان کنید.",
+  mfa_not_enrolled: "ابتدا احراز هویت دومرحلهای را فعال کنید.",
+  mfa_not_enabled: "احراز هویت دومرحلهای هنوز فعال نشده است.",
+  mfa_already_enabled: "احراز هویت دومرحلهای قبلاً فعال شده است.",
+  mfa_required_by_policy: "سیاست امنیتی ادمین، داشتن MFA را الزامی میکند.",
+  mfa_locked: "تلاشهای ناموفق زیاد بود؛ مدتی صبر کنید.",
 };
 
 /** پیام قابل‌نمایش برای کاربر؛ جزئیات فنی هرگز نشان داده نمی‌شود. */
 export function errorMessage(e: unknown): string {
   if (e instanceof ApiError) {
-    if (e.code === "too_many_requests" && e.retryAfterSec) {
+    if ((e.code === "mfa_locked" || e.code === "too_many_requests") && e.retryAfterSec) {
       const mins = Math.ceil(e.retryAfterSec / 60);
       return mins > 1 ? `تعداد تلاش‌ها زیاد است. حدود ${mins} دقیقه بعد دوباره امتحان کنید.` : "تعداد تلاش‌ها زیاد است. کمی بعد دوباره امتحان کنید.";
     }

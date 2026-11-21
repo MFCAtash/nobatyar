@@ -5,6 +5,7 @@ import {
   NotFoundException, Optional, UnprocessableEntityException,
 } from "@nestjs/common";
 import type { Prisma } from "@prisma/client";
+import { buildIcs } from "./calendar-ics";
 import type { Role } from "@nobatyar/shared";
 import { AuditService } from "../audit/audit.service";
 import { AuthUser } from "../common/decorators";
@@ -184,6 +185,20 @@ export class AppointmentsService {
     const participant = user.id === a.patientId || user.id === a.doctorId;
     const reason = participant && a.reasonEnc ? this.crypto.decryptString(a.reasonEnc, aad("appointments", id, "reason")) : null;
     return { ...present(a), reason };
+  }
+
+  /** M3: خروجی تقویم فقط با اطلاعات عمومی نوبت (بدون دلیل مراجعه/PHI). */
+  async calendarIcs(user: AuthUser, id: string): Promise<string> {
+    const a = await this.get(user, id);
+    const clinic = a.doctor.clinic;
+    return buildIcs({
+      uid: a.id,
+      start: new Date(a.startsAt),
+      end: new Date(a.endsAt),
+      summary: `نوبت نزد ${a.doctor.fullName}`,
+      location: clinic ? [clinic.name, clinic.address].filter(Boolean).join(" — ") : null,
+      description: `کد نوبت: ${a.id}`,
+    });
   }
 
   /** A11: امتیازدهی توضیحپذیر غیبت فقط برای یادآوری هدفمند (هرگز تصمیم بالینی/مالی). */

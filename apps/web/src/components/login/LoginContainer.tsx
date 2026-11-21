@@ -1,7 +1,7 @@
 "use client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { ApiError } from "@/lib/api";
+import { ApiError, isMfaRequired } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { safeNext, toAsciiDigits } from "@/lib/format";
 import { errorMessage } from "@/lib/messages";
@@ -14,7 +14,7 @@ const RESEND_SEC = 60;
 const PHONE_RE = /^(\+?98|0)?9\d{9}$/;
 
 export function LoginContainer() {
-  const { api, login, status, me } = useAuth();
+  const { api, login, status, me, mfaRequired } = useAuth();
   const router = useRouter();
   const next = safeNext(useSearchParams().get("next"), "");
   const [step, setStep] = useState<"phone" | "code">("phone");
@@ -25,9 +25,14 @@ export function LoginContainer() {
   const { left: wait, start: startWait } = useCountdown();
   const submitted = useRef<string>(""); // جلوگیری از ارسال خودکارِ دوباره‌ی همان کد
 
+  // چالش MFA پیش از هر ریدایرکت دیگری است؛ نشست معتبر است و نباید دوباره وارد شویم.
+  useEffect(() => {
+    if (mfaRequired) router.replace(`/mfa?next=${encodeURIComponent(next)}`);
+  }, [mfaRequired, next, router]);
+
   // تنها منبع ریدایرکت پس از ورود (هم برای کاربر واردشده‌ی قبلی، هم بعد از verify)
   useEffect(() => {
-    if (status !== "authed" || !me) return;
+    if (status !== "authed" || !me || mfaRequired) return;
     if (!me.fullName) return router.replace(`/onboarding${next ? `?next=${encodeURIComponent(next)}` : ""}`);
     router.replace(next || (me.role === "DOCTOR" ? "/doctor" : me.role === "ADMIN" ? "/admin/verifications" : "/"));
   }, [status, me, next, router]);
@@ -51,7 +56,10 @@ export function LoginContainer() {
     if (!/^\d{6,8}$/.test(c)) return setErr("کد تأیید را کامل وارد کنید.");
     setBusy(true); setErr(null);
     try { await login(toAsciiDigits(phone).replace(/\s+/g, ""), c); } // ریدایرکت را effect بالا انجام می‌دهد
-    catch (e2) { setErr(errorMessage(e2)); setCode(""); submitted.current = ""; } finally { setBusy(false); }
+    catch (e2) {
+      if (isMfaRequired(e2)) { setErr("تأیید دومرحلهای لازم است."); return; }
+      setErr(errorMessage(e2)); setCode(""); submitted.current = "";
+    } finally { setBusy(false); }
   }
 
   const onCode = (v: string) => {

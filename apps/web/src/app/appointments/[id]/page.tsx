@@ -7,6 +7,8 @@ import { ReschedulePanel } from "@/components/ReschedulePanel";
 import { ClinicalPanel } from "@/components/ClinicalPanel";
 import { NpsCard } from "@/components/NpsCard";
 import { RequireAuth } from "@/components/RequireAuth";
+import { ModuleGate } from "@/components/system/ModuleGate";
+import { useToast } from "@/components/Toast";
 import { ErrorBox, kindLabel, Loading, StatusBadge } from "@/components/ui";
 import { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
@@ -18,6 +20,7 @@ import type { AppointmentDetail } from "@/lib/types";
 function Detail() {
   const { id } = useParams<{ id: string }>();
   const { api, me } = useAuth();
+  const toast = useToast();
   const [a, setA] = useState<AppointmentDetail | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
@@ -29,6 +32,19 @@ function Detail() {
   }, [api, id]);
   useEffect(() => { void load(); }, [load]);
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
+
+  const downloadIcs = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/v1/appointments/${id}/calendar.ics`, {
+        headers: { Authorization: `Bearer ${api.getToken()}` }, credentials: "include",
+      });
+      if (!res.ok) { toast("دریافت فایل تقویم ناموفق بود.", "bad"); return; }
+      const url = URL.createObjectURL(await res.blob());
+      const link = document.createElement("a");
+      link.href = url; link.download = `nobatyar-${id}.ics`; link.click();
+      URL.revokeObjectURL(url);
+    } catch { toast("دریافت فایل تقویم ناموفق بود.", "bad"); }
+  }, [api, id, toast]);
 
   if (notFound) return <div className="empty">نوبت پیدا نشد.</div>;
   if (err) return <ErrorBox message={err} />;
@@ -83,6 +99,9 @@ function Detail() {
       <AppointmentActions a={a} onDone={() => void load()} />
       {a.status === "COMPLETED" && <NpsCard appointmentId={a.id} />}
       {a.status === "CONFIRMED" && <Link href={`/appointments/${a.id}/waiting`} className="btn self-start">رفتن به اتاق انتظار</Link>}
+      <ModuleGate flag="FF_M3_SMART_BOOKING">
+        <button type="button" className="btn self-start" onClick={() => void downloadIcs()}>افزودن به تقویم من (.ics)</button>
+      </ModuleGate>
     </div>
   );
 }

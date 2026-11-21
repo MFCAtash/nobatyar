@@ -6,6 +6,8 @@ import { ZodPipe } from "../common/zod.pipe";
 import { PrismaService } from "../prisma/prisma.service";
 import { SCHEDULING_CONFIG, SchedulingConfig } from "../scheduling/config";
 import { formatDateStr, generateSlots, Interval, parseDateStr, tehranDateOf, tehranLocalToUtc } from "../scheduling/slots";
+import { rankSlots } from "../scheduling/ranking";
+import { moduleEnabled } from "../common/feature-flags";
 
 const searchSchema = z.object({
   q: z.string().trim().min(2).max(50).optional(),
@@ -13,9 +15,12 @@ const searchSchema = z.object({
   page: z.coerce.number().int().min(1).max(1000).default(1),
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });
-const slotsSchema = z.object({
+export const slotsSchema = z.object({
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  /** M3: پیشنهادهای رتبهبندیشده — پشت feature flag سرور. */
+  ranked: z.coerce.boolean().default(false),
+  limit: z.coerce.number().int().min(1).max(20).default(5),
 });
 
 const publicSelect = {
@@ -113,7 +118,25 @@ export class DoctorDirectoryController {
       rules: data.doc.availability, slotMinutes: data.doc.slotMinutes, fromDate: from, toDate: to,
       unavailable: data.unavailable, now, minLeadMinutes: this.cfg.minLeadMinutes, maxAdvanceDays: this.cfg.maxAdvanceDays,
     });
-    return { timezone: "Asia/Tehran", slotMinutes: data.doc.slotMinutes, slots: slots.map((s) => ({ startsAt: s.start, endsAt: s.end })) };
+    const base = {
+      timezone: "Asia/Tehran",
+      slotMinutes: data.doc.slotMinutes,
+      slots: slots.map((s) => ({ startsAt: s.start, endsAt: s.end })),
+    };
+    if (!q.ranked || !moduleEnabled("FF_M3_SMART_BOOKING")) return base;
+
+    // بار پزشک فقط از نمای بدون-PHI appointment_busy شمارش میشود.
+    const dayLoad: Record<string, number> = {};
+    for (const s of slots) {
+      const shifted = new Date(s.start.getTime() + 210 * 60_000);
+      const key = shifted.toISOString().slice(0, 10);
+      dayLoad[key] = (dayLoad[key] ?? 0) + 1;
+    }
+    return {
+      ...base,
+      ranked: true as const,
+      suggestions: rankSlots(slots, { now, dayLoad }, q.limit),
+    };
   }
 }
 

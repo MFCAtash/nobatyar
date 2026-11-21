@@ -67,6 +67,53 @@ export interface Operations {
     body: undefined;
     response: unknown;
   };
+  "GET /admin/policies": {
+    params: undefined;
+    query: undefined;
+    body: undefined;
+    response: {
+      aggregate: "APPOINTMENT";
+      version: number;
+      mermaid: string;
+      invariants: string[];
+    };
+  };
+  "POST /admin/policies/{version}/activate": {
+    params: { version: string };
+    query: undefined;
+    body: {
+      version: number;
+    };
+    response: {
+      ok: boolean;
+      version: number;
+    };
+  };
+  "POST /admin/policies/simulate": {
+    params: undefined;
+    query: undefined;
+    body: {
+      version?: number;
+      action: "CONFIRM" | "DOCTOR_CANCEL" | "PATIENT_CANCEL" | "START" | "COMPLETE" | "REPORT_PATIENT_NO_SHOW" | "REPORT_DOCTOR_NO_SHOW" | "EXPIRE" | "PAYMENT_SUCCEEDED";
+      from: "PENDING_PAYMENT" | "PENDING_CONFIRMATION" | "CONFIRMED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED_BY_PATIENT" | "CANCELLED_BY_DOCTOR" | "EXPIRED" | "NO_SHOW_PATIENT" | "NO_SHOW_DOCTOR";
+      startsAt: string;
+      endsAt: string;
+      autoConfirm?: boolean;
+      paidRial?: string;
+      now?: string;
+    };
+    response: {
+      plan: {
+        ok: boolean;
+        to: string | null;
+        error: string | null;
+        ruleId: string | null;
+      };
+      rule: string | null;
+      refund: string | null;
+      steps: string[];
+    };
+  };
   "GET /admin/refunds": {
     params: undefined;
     query: { status?: "PENDING" | "PROCESSING" | "PROCESSED" | "FAILED" | "MANUAL" | "REVIEW"; limit?: number };
@@ -398,6 +445,12 @@ export interface Operations {
     response: unknown;
   };
   "GET /appointments/{id}": {
+    params: { id: string };
+    query: undefined;
+    body: undefined;
+    response: unknown;
+  };
+  "GET /appointments/{id}/calendar.ics": {
     params: { id: string };
     query: undefined;
     body: undefined;
@@ -768,7 +821,7 @@ export interface Operations {
   };
   "GET /doctors/{id}/slots": {
     params: { id: string };
-    query: undefined;
+    query: { from?: string; to?: string; ranked?: boolean; limit?: number };
     body: undefined;
     response: unknown;
   };
@@ -1418,6 +1471,9 @@ export const OPERATIONS = {
   "POST /admin/doctor-verifications/{id}/reject": { method: "POST", path: "/admin/doctor-verifications/{id}/reject", public: false, idempotency: null, summary: "رد مدارک پزشک با دلیل" },
   "GET /admin/finance/summary": { method: "GET", path: "/admin/finance/summary", public: false, idempotency: null, summary: "خلاصه‌ی مالی و موارد نیازمند توجه" },
   "GET /admin/payments": { method: "GET", path: "/admin/payments", public: false, idempotency: null, summary: "فهرست پرداخت‌ها (فیلتر وضعیت)" },
+  "GET /admin/policies": { method: "GET", path: "/admin/policies", public: false, idempotency: null, summary: "دریافت نسخهٔ قواعد ماشین وضعیت و نمودار Mermaid" },
+  "POST /admin/policies/{version}/activate": { method: "POST", path: "/admin/policies/{version}/activate", public: false, idempotency: null, summary: "فعالسازی نسخهٔ قواعد (ثبت در audit)" },
+  "POST /admin/policies/simulate": { method: "POST", path: "/admin/policies/simulate", public: false, idempotency: null, summary: "شبیهسازی انتقال وضعیت و بازپرداخت (بدون اثر بر DB)" },
   "GET /admin/refunds": { method: "GET", path: "/admin/refunds", public: false, idempotency: null, summary: "فهرست استردادها" },
   "POST /admin/refunds/{id}/approval/approve": { method: "POST", path: "/admin/refunds/{id}/approval/approve", public: false, idempotency: "required", summary: "Checker (غیر از Maker): تأیید" },
   "POST /admin/refunds/{id}/approval/reject": { method: "POST", path: "/admin/refunds/{id}/approval/reject", public: false, idempotency: "required", summary: "Checker (غیر از Maker): رد با دلیل" },
@@ -1434,6 +1490,7 @@ export const OPERATIONS = {
   "POST /appointments": { method: "POST", path: "/appointments", public: false, idempotency: null, summary: "رزرو نوبت (ضد double-booking)" },
   "GET /appointments": { method: "GET", path: "/appointments", public: false, idempotency: null, summary: "فهرست نوبت‌های کاربر (cursor)" },
   "GET /appointments/{id}": { method: "GET", path: "/appointments/{id}", public: false, idempotency: null, summary: "جزئیات نوبت" },
+  "GET /appointments/{id}/calendar.ics": { method: "GET", path: "/appointments/{id}/calendar.ics", public: false, idempotency: null, summary: "M3: خروجی تقویم ICS (فاقد PHI)" },
   "POST /appointments/{id}/cancel": { method: "POST", path: "/appointments/{id}/cancel", public: false, idempotency: null, summary: "لغو نوبت (بازپرداخت طبق سیاست)" },
   "POST /appointments/{id}/complete": { method: "POST", path: "/appointments/{id}/complete", public: false, idempotency: null, summary: "پایان ویزیت" },
   "POST /appointments/{id}/confirm": { method: "POST", path: "/appointments/{id}/confirm", public: false, idempotency: null, summary: "پزشک: تأیید نوبت" },
@@ -1479,7 +1536,7 @@ export const OPERATIONS = {
   "GET /doctor/stats/summary": { method: "GET", path: "/doctor/stats/summary", public: false, idempotency: null, summary: "خلاصه عملکرد پزشک" },
   "GET /doctors": { method: "GET", path: "/doctors", public: true, idempotency: null, summary: "جستجوی پزشکان فهرستشده" },
   "GET /doctors/{id}": { method: "GET", path: "/doctors/{id}", public: true, idempotency: null, summary: "جزئیات پزشک" },
-  "GET /doctors/{id}/slots": { method: "GET", path: "/doctors/{id}/slots", public: true, idempotency: null, summary: "اسلاتهای آزاد پزشک در بازه" },
+  "GET /doctors/{id}/slots": { method: "GET", path: "/doctors/{id}/slots", public: true, idempotency: null, summary: "اسلاتهای آزاد پزشک در بازه (M3: ranked=true پیشنهاد رتبهبندیشده)" },
   "POST /doctors/applications": { method: "POST", path: "/doctors/applications", public: false, idempotency: null, summary: "ارسال درخواست پزشکی" },
   "GET /doctors/applications/mine": { method: "GET", path: "/doctors/applications/mine", public: false, idempotency: null, summary: "وضعیت درخواست پزشک من" },
   "GET /doctors/compare": { method: "GET", path: "/doctors/compare", public: false, idempotency: null, summary: "مقایسه حداکثر ۳ پزشک" },

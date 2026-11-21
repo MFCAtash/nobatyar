@@ -12,6 +12,8 @@ import { DataRequestService } from "../records/data-request.service";
 import { AppointmentsService } from "../appointments/appointments.service";
 import { WaitlistService } from "../appointments/waitlist.service";
 import { AuditVerifierService } from "../audit/audit-verifier.service";
+import { RefundWorkerService } from "../payment/refund-worker.service";
+import { REFUND_WORKER_CONFIG, type RefundWorkerConfig } from "../payment/refund-worker.config";
 
 /** BullMQ: یک job تکرارشونده (هر ۶۰ ثانیه). فقط وقتی ENABLE_WORKERS=true؛ برای اجرا در یک نمونه‌ی مجزا (worker). */
 @Injectable()
@@ -32,6 +34,8 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
     @Inject(AppointmentsService) private readonly appointments: AppointmentsService,
     @Inject(WaitlistService) private readonly waitlist: WaitlistService,
     @Inject(AuditVerifierService) private readonly auditVerifier: AuditVerifierService,
+    @Inject(RefundWorkerService) private readonly refunds: RefundWorkerService,
+    @Inject(REFUND_WORKER_CONFIG) private readonly refundCfg: RefundWorkerConfig,
   ) {}
 
   async onModuleInit() {
@@ -82,7 +86,20 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
     }, { connection, concurrency: 1 });
     outWorker.on("failed", (_job, err) => this.log.error(`outbox relay job failed: ${err.message}`));
 
-    this.closers = [() => worker.close(), () => payWorker.close(), () => outWorker.close(), () => queue.close(), () => payQueue.close(), () => outQueue.close(), async () => connection.quit()];
+    // صف جدا برای استرداد خودکار (M4): فقط وقتی flag روشن است؛ از RefundService.execute با claim اتمیک عبور میکند.
+    if (this.refundCfg.enabled) {
+      const refundQueue = new Queue("refunds", { connection });
+      for (const r of await refundQueue.getRepeatableJobs()) {
+        if (r.name === "refund-worker-tick" && Number(r.every) !== this.refundCfg.everyMs) await refundQueue.removeRepeatableByKey(r.key);
+      }
+      await refundQueue.add("refund-worker-tick", {}, { repeat: { every: this.refundCfg.everyMs }, jobId: "refund-worker-tick", removeOnComplete: 10, removeOnFail: 50 });
+      const refundWorker = new Worker("refunds", async () => { await this.refunds.run(); }, { connection, concurrency: 1 });
+      refundWorker.on("failed", (_job, err) => this.log.error(`refund worker job failed: ${err.message}`));
+      this.closers = [() => refundWorker.close(), () => refundQueue.close(), ...this.closers];
+      this.log.log("refund worker started");
+    }
+
+    this.closers = [() => worker.close(), () => payWorker.close(), () => outWorker.close(), () => queue.close(), () => payQueue.close(), () => outQueue.close(), async () => connection.quit(), ...this.closers];
     this.log.log("maintenance worker started");
   }
 

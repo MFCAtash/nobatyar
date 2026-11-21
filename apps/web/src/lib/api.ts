@@ -32,6 +32,13 @@ export interface ApiOptions {
   now?: () => number;
   freshWindowMs?: number;
   onAuthLost?: () => void;
+  /** ادمین دارای MFA ولی بدون claim مfa — نشست معتبر است، فقط چالش لازم است. */
+  onMfaRequired?: (err: ApiError) => void;
+}
+
+/** تشخیص چالش MFA — بدنهٔ خطا دقیقاً `{ error: "mfa_required" }` است. */
+export function isMfaRequired(e: unknown): e is ApiError {
+  return e instanceof ApiError && e.status === 403 && e.code === "mfa_required";
 }
 
 type RefreshResult = { status: "ok"; token: string } | { status: "denied" } | { status: "error" };
@@ -148,7 +155,10 @@ export function createApi(opts: ApiOptions = {}) {
     }
     if (!res.ok) {
       const code = (body as { error?: unknown } | undefined)?.error;
-      throw new ApiError(res.status, typeof code === "string" ? code : `http_${res.status}`, body);
+      const err = new ApiError(res.status, typeof code === "string" ? code : `http_${res.status}`, body);
+      // پیشتر این خطا مثل 403 معمولی تلقیت میشد و کاربر ناخواسته خارج میشد.
+      if (isMfaRequired(err)) opts.onMfaRequired?.(err);
+      throw err;
     }
     return body as T;
   }
@@ -200,9 +210,9 @@ export function createApi(opts: ApiOptions = {}) {
 export type Api = ReturnType<typeof createApi>;
 
 /** نمونه‌ی مشترک برنامه (سمت مرورگر). */
-export function createBrowserApi(onAuthLost: () => void): Api {
-  if (typeof window === "undefined") return createApi({ onAuthLost }); // SSR: بدون قفل/کانال
+export function createBrowserApi(onAuthLost: () => void, onMfaRequired?: (err: ApiError) => void): Api {
+  if (typeof window === "undefined") return createApi({ onAuthLost, onMfaRequired }); // SSR: بدون قفل/کانال
   const locks = typeof navigator !== "undefined" && "locks" in navigator ? (navigator.locks as unknown as LocksLike) : null;
   const channel = typeof BroadcastChannel !== "undefined" ? (new BroadcastChannel("nb-auth") as unknown as ChannelLike) : null;
-  return createApi({ locks, channel, onAuthLost });
+  return createApi({ locks, channel, onAuthLost, onMfaRequired });
 }

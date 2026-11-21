@@ -1,10 +1,12 @@
 import { markSchema, notRefundedSchema, paymentListQuery, refundListQuery, rejectSchema, decideSchema, requestApprovalSchema } from "../admin/finance.schemas";
+import { activateSchema, simulateSchema } from "../admin/policy.schemas";
 import { suspendSchema } from "../admin/user-admin";
 import { requestOtpSchema, verifyOtpSchema } from "../auth/schemas";
 import { codeSchema } from "../auth/mfa.controller";
 import { bookSchema, listSchema as appointmentListSchema, rescheduleSchema } from "../appointments/schemas";
 import { joinSchema as waitlistJoinSchema } from "../appointments/waitlist.controller";
 import { settingsSchema as doctorSettingsSchema } from "../doctors/doctor-schedule.controller";
+import { slotsSchema as doctorSlotsSchema } from "../doctors/doctor-directory.controller";
 import { dataRequestSchema } from "../records/fhir.controller";
 import { webauthnResponseSchema } from "../auth/passkey.controller";
 import { decisionSchema, insuranceSchema, payoutSchema, settleSchema, topupSchema } from "../wallet/wallet.controller";
@@ -52,6 +54,11 @@ const REFUND_ERRORS: Record<number, string> = {
  * پس مستند و اعتبارسنجی هرگز از هم جدا نمی‌شوند. مسیر جدید بدون مستند ⇒ تست coverage شکست می‌خورد (openapi/undocumented.json).
  */
 export const ROUTES: RouteDoc[] = [
+  // ── M2: قواعد ماشین وضعیت (ادمین) ──
+  { method: "get", path: "/admin/policies", tag: "Admin · Policy", summary: "دریافت نسخهٔ قواعد ماشین وضعیت و نمودار Mermaid", auth: "admin", ok: { status: 200, schema: obj({ aggregate: { const: "APPOINTMENT" }, version: { type: "integer" }, mermaid: str(), invariants: { type: "array", items: str() } }) }, errors: { 404: "module_disabled" } },
+  { method: "post", path: "/admin/policies/simulate", tag: "Admin · Policy", summary: "شبیهسازی انتقال وضعیت و بازپرداخت (بدون اثر بر DB)", auth: "admin", body: simulateSchema, ok: { status: 200, schema: obj({ plan: obj({ ok: { type: "boolean" }, to: nullable(str()), error: nullable(str()), ruleId: nullable(str()) }), rule: nullable(str()), refund: nullable(str()), steps: { type: "array", items: str() } }) }, errors: { 404: "module_disabled" } },
+  { method: "post", path: "/admin/policies/:version/activate", tag: "Admin · Policy", summary: "فعالسازی نسخهٔ قواعد (ثبت در audit)", auth: "admin", body: activateSchema, ok: { status: 200, schema: obj({ ok: { type: "boolean" }, version: { type: "integer" } }) }, errors: { 404: "module_disabled" } },
+
   // ── احراز هویت ──
   { method: "post", path: "/auth/otp/request", tag: "Auth", summary: "درخواست کد OTP (پاسخ همیشه یکسان است)", auth: "public", body: requestOtpSchema, ok: { status: 202, description: "پذیرفته شد", schema: obj({ status: { const: "accepted" } }) }, errors: { 429: "rate limit (phone / IP)" } },
   { method: "post", path: "/auth/otp/verify", tag: "Auth", summary: "تأیید OTP و دریافت access token (+ کوکی HttpOnly ی refresh)", auth: "public", body: verifyOtpSchema, ok: { status: 200, schema: tokens }, errors: { 401: "کد نادرست/منقضی", 429: "rate limit" } },
@@ -96,6 +103,7 @@ export const ROUTES: RouteDoc[] = [
   { method: "post", path: "/appointments", tag: "Appointments", summary: "رزرو نوبت (ضد double-booking)", auth: "patient", body: bookSchema, ok: { status: 201 }, errors: { 409: "slot_taken | invalid_slot | consent_required" } },
   { method: "get", path: "/appointments", tag: "Appointments", summary: "فهرست نوبت‌های کاربر (cursor)", auth: "user", query: appointmentListSchema, ok: { status: 200 } },
   { method: "get", path: "/appointments/:id", tag: "Appointments", summary: "جزئیات نوبت", auth: "user", ok: { status: 200 } },
+  { method: "get", path: "/appointments/:id/calendar.ics", tag: "Appointments", summary: "M3: خروجی تقویم ICS (فاقد PHI)", auth: "user", ok: { status: 200, description: "text/calendar" } },
   { method: "post", path: "/appointments/:id/confirm", tag: "Appointments", summary: "پزشک: تأیید نوبت", auth: "doctor", ok: { status: 200 }, errors: { 409: "invalid_transition" } },
   { method: "post", path: "/appointments/:id/cancel", tag: "Appointments", summary: "لغو نوبت (بازپرداخت طبق سیاست)", auth: "user", ok: { status: 200 }, errors: { 409: "invalid_transition" } },
   { method: "post", path: "/appointments/:id/start", tag: "Appointments", summary: "شروع ویزیت", auth: "doctor", ok: { status: 200 } },
@@ -170,7 +178,7 @@ export const ROUTES: RouteDoc[] = [
   { method: "get", path: "/specialties", tag: "Doctors", summary: "فهرست تخصصها", auth: "public", ok: { status: 200 } },
   { method: "get", path: "/doctors", tag: "Doctors", summary: "جستجوی پزشکان فهرستشده", auth: "public", ok: { status: 200 } },
   { method: "get", path: "/doctors/:id", tag: "Doctors", summary: "جزئیات پزشک", auth: "public", ok: { status: 200 } },
-  { method: "get", path: "/doctors/:id/slots", tag: "Doctors", summary: "اسلاتهای آزاد پزشک در بازه", auth: "public", ok: { status: 200 } },
+  { method: "get", path: "/doctors/:id/slots", tag: "Doctors", summary: "اسلاتهای آزاد پزشک در بازه (M3: ranked=true پیشنهاد رتبهبندیشده)", auth: "public", query: doctorSlotsSchema, ok: { status: 200 } },
   { method: "get", path: "/doctors/compare", tag: "Doctors", summary: "مقایسه حداکثر ۳ پزشک", auth: "user", ok: { status: 200 } },
   { method: "get", path: "/doctors/applications/mine", tag: "Doctors", summary: "وضعیت درخواست پزشک من", auth: "doctor", ok: { status: 200 } },
   { method: "post", path: "/doctors/applications", tag: "Doctors", summary: "ارسال درخواست پزشکی", auth: "user", ok: { status: 201 } },

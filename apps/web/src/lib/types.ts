@@ -30,7 +30,14 @@ export interface DoctorCard {
 
 export interface DoctorSearch { total: number; page: number; limit: number; items: DoctorCard[] }
 
-export interface SlotsResponse { timezone: string; slotMinutes: number; slots: { startsAt: string; endsAt: string }[] }
+export interface RankedSlotView {
+  startsAt: string; endsAt: string; score: number; reasonsFa: string[];
+}
+export interface SlotsResponse {
+  timezone: string; slotMinutes: number; slots: { startsAt: string; endsAt: string }[];
+  /** M3 — فقط زمانی که ranked=true و feature flag روشن است */
+  ranked?: boolean; suggestions?: RankedSlotView[];
+}
 
 export interface AppointmentItem {
   id: string;

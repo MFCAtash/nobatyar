@@ -1,4 +1,5 @@
 import type { SchedulingConfig } from "./config";
+import { selectRefundRule } from "./refund-policy";
 
 /** وضعیت‌های نوبت (هم‌خوان با enum دیتابیس و packages/shared). */
 export type Status =
@@ -93,20 +94,7 @@ export interface RefundDecision {
 
 /** سیاست بازپرداخت برای نوبتِ پرداخت‌شده (docs/appointment-rules.md). */
 export function computeRefund(action: Action, paidRial: bigint, startsAt: Date, now: Date, cfg: SchedulingConfig): RefundDecision {
-  let percent = 0;
-  switch (action) {
-    case "DOCTOR_CANCEL":
-    case "REPORT_DOCTOR_NO_SHOW":
-    case "EXPIRE":
-      percent = 100;
-      break;
-    case "PATIENT_CANCEL": {
-      const hoursBefore = (startsAt.getTime() - now.getTime()) / 3_600_000;
-      percent = hoursBefore >= cfg.refundFullHours ? 100 : hoursBefore >= cfg.refundNoneHours ? cfg.refundMidPercent : 0;
-      break;
-    }
-    default:
-      percent = 0;
-  }
+  const hoursBefore = (startsAt.getTime() - now.getTime()) / 3_600_000;
+  const percent = selectRefundRule(action, hoursBefore, cfg).percent;
   return { percent, amountRial: (paidRial * BigInt(percent)) / 100n };
 }

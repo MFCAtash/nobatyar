@@ -12,6 +12,7 @@ import { nextTehranDays } from "@/lib/format";
 import { errorMessage } from "@/lib/messages";
 import { useApiMutation, useApiQuery } from "@/lib/query/hooks";
 import { qk, qkRoot } from "@/lib/query/keys";
+import { moduleEnabled } from "@/components/system/ModuleGate";
 import type { AppointmentDetail, AppointmentKind, DoctorCard, SlotsResponse } from "@/lib/types";
 import { BookingView } from "./BookingView";
 import { DoctorProfileView } from "./DoctorProfileView";
@@ -38,7 +39,12 @@ export function DoctorBookingContainer({ doctorId }: { doctorId: string }) {
   const hydrated = useRef(false);
 
   const doctor = useApiQuery<DoctorCard>(qk.doctor(doctorId), `/doctors/${doctorId}`);
-  const slots = useApiQuery<SlotsResponse>(qk.slots(doctorId, day), `/doctors/${doctorId}/slots?from=${day}&to=${day}`, { staleTime: 0 });
+  const ranked = moduleEnabled("FF_M3_SMART_BOOKING");
+  const slots = useApiQuery<SlotsResponse>(
+    qk.slots(doctorId, day),
+    `/doctors/${doctorId}/slots?from=${day}&to=${day}${ranked ? "&ranked=true" : ""}`,
+    { staleTime: 0 },
+  );
 
   // ── بازیابی پیش‌نویس (یک‌بار) ──
   useEffect(() => {
@@ -103,7 +109,9 @@ export function DoctorBookingContainer({ doctorId }: { doctorId: string }) {
     <div className="grid grid-2 items-start">
       <DoctorProfileView doctor={doctor.data} />
       <BookingView
-        days={days} day={day} slots={slots.isError ? [] : slots.data?.slots} slot={slot} kind={kind} reason={reason} step={step}
+        days={days} day={day} slots={slots.isError ? [] : slots.data?.slots}
+        suggestions={ranked && !slots.isError ? slots.data?.suggestions : undefined}
+        slot={slot} kind={kind} reason={reason} step={step}
         busy={book.isPending} error={err ?? (slots.isError ? errorMessage(slots.error) : null)} authed={status === "authed"} canBook={canBook} restored={restored}
         onDay={onDay} onSlot={setSlot} onKind={setKind} onReason={setReason} onStep={setStep} onSubmit={submit} onDiscardDraft={discard}
       />

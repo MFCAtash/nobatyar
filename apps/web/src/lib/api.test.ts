@@ -1,11 +1,28 @@
 import { describe, expect, it } from "vitest";
-import { ApiError, createApi } from "./api";
+import { ApiError, createApi, isMfaRequired } from "./api";
 import { errorMessage } from "./messages";
 
 const json = (status: number, body?: unknown) =>
   new Response(body === undefined ? null : JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 
 describe("api client", () => {
+  it("mfa_required فراخوانی onMfaRequired میکند و کاربر را خارج نمیکند", async () => {
+    let mfa = 0, lost = 0, refresh = 0;
+    const api = createApi({
+      onAuthLost: () => lost++,
+      onMfaRequired: () => mfa++,
+      fetchImpl: async (url) => {
+        if (String(url).endsWith("/auth/refresh")) { refresh++; return json(200, { accessToken: "T2" }); }
+        return json(403, { error: "mfa_required" });
+      },
+    });
+    api.setToken("T1");
+    await expect(api.get("/me")).rejects.toMatchObject({ status: 403, code: "mfa_required" });
+    expect({ mfa, lost, refresh }).toEqual({ mfa: 1, lost: 0, refresh: 0 });
+    expect(isMfaRequired(new ApiError(403, "mfa_required"))).toBe(true);
+    expect(isMfaRequired(new ApiError(403, "forbidden"))).toBe(false);
+  });
+
   it("refreshes once for many concurrent 401s (single-flight) and retries each request", async () => {
     let refreshCalls = 0;
     const api = createApi({

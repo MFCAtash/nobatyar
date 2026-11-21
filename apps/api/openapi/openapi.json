@@ -408,6 +408,362 @@
         ]
       }
     },
+    "/admin/policies": {
+      "get": {
+        "tags": [
+          "Admin · Policy"
+        ],
+        "summary": "دریافت نسخهٔ قواعد ماشین وضعیت و نمودار Mermaid",
+        "operationId": "getAdminPolicies",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "موفق",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "aggregate": {
+                      "const": "APPOINTMENT"
+                    },
+                    "version": {
+                      "type": "integer"
+                    },
+                    "mermaid": {
+                      "type": "string"
+                    },
+                    "invariants": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "aggregate",
+                    "version",
+                    "mermaid",
+                    "invariants"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "module_disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "ADMIN"
+        ]
+      }
+    },
+    "/admin/policies/{version}/activate": {
+      "post": {
+        "tags": [
+          "Admin · Policy"
+        ],
+        "summary": "فعالسازی نسخهٔ قواعد (ثبت در audit)",
+        "operationId": "postAdminPoliciesVersionActivate",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "version"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "موفق",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "version": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "version"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "module_disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "ADMIN"
+        ]
+      }
+    },
+    "/admin/policies/simulate": {
+      "post": {
+        "tags": [
+          "Admin · Policy"
+        ],
+        "summary": "شبیهسازی انتقال وضعیت و بازپرداخت (بدون اثر بر DB)",
+        "operationId": "postAdminPoliciesSimulate",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "CONFIRM",
+                      "DOCTOR_CANCEL",
+                      "PATIENT_CANCEL",
+                      "START",
+                      "COMPLETE",
+                      "REPORT_PATIENT_NO_SHOW",
+                      "REPORT_DOCTOR_NO_SHOW",
+                      "EXPIRE",
+                      "PAYMENT_SUCCEEDED"
+                    ]
+                  },
+                  "from": {
+                    "type": "string",
+                    "enum": [
+                      "PENDING_PAYMENT",
+                      "PENDING_CONFIRMATION",
+                      "CONFIRMED",
+                      "IN_PROGRESS",
+                      "COMPLETED",
+                      "CANCELLED_BY_PATIENT",
+                      "CANCELLED_BY_DOCTOR",
+                      "EXPIRED",
+                      "NO_SHOW_PATIENT",
+                      "NO_SHOW_DOCTOR"
+                    ]
+                  },
+                  "startsAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "endsAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "autoConfirm": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "paidRial": {
+                    "type": "string",
+                    "pattern": "^\\d+$"
+                  },
+                  "now": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                },
+                "required": [
+                  "action",
+                  "from",
+                  "startsAt",
+                  "endsAt"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "موفق",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "plan": {
+                      "type": "object",
+                      "properties": {
+                        "ok": {
+                          "type": "boolean"
+                        },
+                        "to": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "error": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "ruleId": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "ok",
+                        "to",
+                        "error",
+                        "ruleId"
+                      ]
+                    },
+                    "rule": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "refund": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "steps": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "plan",
+                    "rule",
+                    "refund",
+                    "steps"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "module_disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "ADMIN"
+        ]
+      }
+    },
     "/admin/refunds": {
       "get": {
         "tags": [
@@ -3397,6 +3753,39 @@
         }
       }
     },
+    "/appointments/{id}/calendar.ics": {
+      "get": {
+        "tags": [
+          "Appointments"
+        ],
+        "summary": "M3: خروجی تقویم ICS (فاقد PHI)",
+        "operationId": "getAppointmentsIdCalendar.ics",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "text/calendar"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
     "/appointments/{id}/cancel": {
       "post": {
         "tags": [
@@ -5509,7 +5898,7 @@
         "tags": [
           "Doctors"
         ],
-        "summary": "اسلاتهای آزاد پزشک در بازه",
+        "summary": "اسلاتهای آزاد پزشک در بازه (M3: ranked=true پیشنهاد رتبهبندیشده)",
         "operationId": "getDoctorsIdSlots",
         "security": [],
         "parameters": [
@@ -5520,6 +5909,44 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            }
+          },
+          {
+            "name": "ranked",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20,
+              "default": 5
             }
           }
         ],

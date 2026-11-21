@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Inject, Param, ParseUUIDPipe, Post, Query } from "@nestjs/common";
+import { Body, Controller, Get, Header, HttpCode, Inject, Param, ParseUUIDPipe, Post, Query } from "@nestjs/common";
 import { AuthUser, CurrentUser, RequireConsent, Roles } from "../common/decorators";
 import { ZodPipe } from "../common/zod.pipe";
 import { AppointmentsService } from "./appointments.service";
@@ -18,6 +18,14 @@ export class AppointmentsController {
   @Get()
   list(@CurrentUser() u: AuthUser, @Query(new ZodPipe(listSchema)) q: ListInput) {
     return this.svc.list(u, q);
+  }
+
+  /** M3: خروجی تقویم (ICS) — فقط طرفین نوبت مجازاند و هیچ PHIای در فایل نیست. */
+  @Get(":id/calendar.ics")
+  @Header("Content-Type", "text/calendar; charset=utf-8")
+  @Header("Cache-Control", "no-store")
+  calendar(@CurrentUser() u: AuthUser, @Param("id", new ParseUUIDPipe()) id: string) {
+    return this.svc.calendarIcs(u, id);
   }
 
   @Get(":id")

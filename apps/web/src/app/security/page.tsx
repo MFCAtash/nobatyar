@@ -5,6 +5,7 @@ import { Alert, Badge, EmptyState } from "@/components/design";
 import { ErrorBox, Loading } from "@/components/ui";
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/lib/auth-context";
+import { MfaManager } from "@/components/mfa/MfaManager";
 import { errorMessage } from "@/lib/messages";
 import { formatDateTime } from "@/lib/format";
 
@@ -119,7 +120,7 @@ function SecurityContent() {
   return (
     <div className="stack">
       <header className="page-head"><div><h1>امنیت حساب</h1><p className="muted">مدیریت روشهای ورود و کلیدهای امنیتی</p></div></header>
-      {status === "authed" ? <PasskeyManager /> : <PasskeyLogin />}
+      {status === "authed" ? <><PasskeyManager /><MfaManager title="احراز هویت دومرحلهای" /></> : <PasskeyLogin />}
     </div>
   );
 }

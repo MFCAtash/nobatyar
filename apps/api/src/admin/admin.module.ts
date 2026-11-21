@@ -14,10 +14,11 @@ import { CryptoModule } from "../crypto/crypto.module";
 import { AuditModule } from "../audit/audit.module";
 import { AuditVerifierService } from "../audit/audit-verifier.service";
 import { AuditController } from "./audit.controller";
+import { PolicyController } from "./policy.controller";
 
 @Module({
   imports: [PrismaModule, PaymentModule, FhirModule, StorageModule, NotificationModule, CryptoModule, AuditModule],
-  controllers: [VerificationController, FinanceController, UserAdminController, OpenApiController, DataRequestController, AuditController],
+  controllers: [VerificationController, FinanceController, UserAdminController, OpenApiController, DataRequestController, AuditController, PolicyController],
   providers: [DataRequestService, AuditVerifierService],
   exports: [DataRequestService, AuditVerifierService],
 })
