@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>نوبت‌یار — منوی انتخاب قابلیتهای رودمپ</title>
+<style>
+  :root{
+    --bg:#07110f; --panel:#0e1f1b; --panel2:#122922; --line:#1e4338;
+    --text:#e8f5ef; --muted:#9bb9ad; --accent:#35d6a4; --accent2:#7cc9ff;
+    --warn:#ffcc66; --done:#5ee08a; --new:#c792ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1100px 600px at 80% -10%,#174235 0,transparent 55%),var(--bg);color:var(--text);font-family:"Segoe UI",Tahoma,"Vazirmatn",sans-serif;line-height:1.7}
+  .wrap{max-width:1320px;margin:auto;padding:34px 22px 70px}
+  header h1{font-size:34px;margin:0 0 6px}
+  header p{color:var(--muted);margin:0 0 18px;max-width:900px}
+  .stats{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0 22px}
+  .stat{background:linear-gradient(135deg,#12352b,#0d231d);border:1px solid var(--line);border-radius:14px;padding:10px 16px;min-width:120px}
+  .stat b{display:block;font-size:22px;color:var(--accent)}
+  .stat span{font-size:12px;color:var(--muted)}
+  .note{background:#261d0c;border:1px solid #6b521e;border-radius:14px;padding:12px 16px;color:#ffe0a3;font-size:14px;margin-bottom:24px}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px;font-size:13px;color:var(--muted)}
+  .pill{border-radius:999px;padding:3px 10px;font-weight:700;font-size:12px}
+  .p-done{background:#16452d;color:var(--done)} .p-part{background:#3d3210;color:var(--warn)} .p-new{background:#332052;color:var(--new)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px}
+  .card{background:linear-gradient(160deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:18px;padding:18px 18px 16px;position:relative;overflow:hidden;transition:.2s}
+  .card:hover{transform:translateY(-3px);border-color:#2f7a61;box-shadow:0 12px 30px #0007}
+  .card:before{content:"";position:absolute;inset:0 0 auto 0;height:3px;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+  .card h2{margin:0 0 4px;font-size:19px}
+  .id{color:var(--accent);font-size:12px;font-weight:800;letter-spacing:.5px}
+  .from{color:var(--muted);font-size:13px;margin:6px 0 12px}
+  .sec{margin:10px 0}
+  .sec b{display:block;color:var(--accent2);font-size:12px;margin-bottom:2px}
+  .sec div{font-size:13.5px;color:#dcece5}
+  .tags{margin-top:12px;display:flex;gap:6px;flex-wrap:wrap}
+  .tag{font-size:11px;background:#0d2b23;border:1px solid var(--line);border-radius:8px;padding:2px 8px;color:var(--muted)}
+  footer{margin-top:34px;background:#0e1f1b;border:1px solid var(--line);border-radius:16px;padding:18px 20px}
+  footer h3{margin:0 0 8px;color:var(--accent)}
+  code{background:#071713;border:1px solid var(--line);padding:1px 6px;border-radius:6px;color:#bfe9d8;font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>نوبت‌یار — منوی قابلیتهای قابلِ انتخاب</h1>
+    <p>استخراج کامل رودمپ ۲۸ اکتبر ۲۰۲۶ + توسعه و ارتقای خلاقانه. هر کارت معادل یک «ماژول» است که میتوانید آن را به پروژه اضافه کنید. شمارهٔ کارت (M1…M15) را در پاسخ خود ذکر کنید.</p>
+  </header>
+
+  <div class="stats">
+    <div class="stat"><b>۱۱</b><span>فاز (۰ تا ۱۰ + ۵.۵)</span></div>
+    <div class="stat"><b>۸</b><span>اصل معماری</span></div>
+    <div class="stat"><b>۱۲</b><span>مرز ماژول</span></div>
+    <div class="stat"><b>۵+</b><span>گروه چکلیست امنیت</span></div>
+    <div class="stat"><b>۵</b><span>Gate انتشار A–E</span></div>
+    <div class="stat"><b>۹</b><span>ADR</span></div>
+    <div class="stat"><b>۱۱</b><span>ریسک شناسایی شده</span></div>
+    <div class="stat"><b>۱۵</b><span>ماژول پیشنهادی من</span></div>
+  </div>
+
+  <div class="note">⚠️ رودمپ بر اساس «تحلیل مبنا» نوشته شده و build/test/staging را اجرا نکرده است. وضعیتها با کد واقعی پروژه راستیآزمایی شده و در متن تحلیل ذکر شدهاند.</div>
+
+  <div class="legend">
+    <span><span class="pill p-done">پیادهشده</span> در پروژه هست</span>
+    <span><span class="pill p-part">ناقص</span> بخشی هست / نیاز به تکمیل دارد</span>
+    <span><span class="pill p-new">جدید</span> ایدهٔ ارتقایافتهای است</span>
+  </div>
+
+  <div class="grid">
+    <div class="card"><span class="id">M1</span> <span class="pill p-done">پیادهشده + ارتقا</span>
+      <h2>هویت مقاوم در برابر فیشینگ</h2>
+      <div class="from">از: فاز ۲ و ۵.۵ (OTP/password، MFA TOTP، recovery، tokenVersion)</div>
+      <div class="sec"><b>ارتقا</b><div>Passkey/WebAuthn بهعنوان ورود پیشفرض، ورود ریسکمحور با step-up، مدیریت نشستها و بستن remote، دسترسی نمایندگی خانوادگی با consent محدود، break-glass دو نفره و consent receipt.</div></div>
+      <div class="tags"><span class="tag">Passkey</span><span class="tag">Risk-based</span><span class="tag">Family proxy</span></div>
+    </div>
+
+    <div class="card"><span class="id">M2</span> <span class="pill p-part">ناقص + ارتقا</span>
+      <h2>ماشین وضعیت Policy-as-Code</h2>
+      <div class="from">از: فاز ۳ (state machine واحد، نقش مجاز، idempotency، refund)</div>
+      <div class="sec"><b>ارتقا</b><div>نمودار بصری وضعیتها در ادمین، شبیهساز انتقال، Saga/compensation برای هر گام، SLA timer خودکار و idempotency key سراسری.</div></div>
+      <div class="tags"><span class="tag">Visual state machine</span><span class="tag">Saga</span><span class="tag">SLA timer</span></div>
+    </div>
+
+    <div class="card"><span class="id">M3</span> <span class="pill p-part">ناقص + ارتقا</span>
+      <h2>رزرو هوشمند و تجربهٔ بیمار</h2>
+      <div class="from">از: فاز ۳ و ۴ (جستوجو، اسلات، RTL، حالتهای خطا)</div>
+      <div class="sec"><b>ارتقا</b><div>رتبهبندی اسلات، نوبت تکرارشونده، همگامسازی تقویم، رزرو گروهی، جستوجوی نزدیکی، تطبیق دسترسپذیری، ظرفیت پویا و تمدید خودکار hold.</div></div>
+      <div class="tags"><span class="tag">Smart slots</span><span class="tag">Calendar</span><span class="tag">Recurring</span></div>
+    </div>
+
+    <div class="card"><span class="id">M4</span> <span class="pill p-part">ناقص + ارتقا</span>
+      <h2>پرداخت و مالی خودمختار</h2>
+      <div class="from">از: فاز ۵ (sandbox، callback، reconciliation، refund worker)</div>
+      <div class="sec"><b>ارتقا</b><div>مسیریاب درگاه، split/بیمه با copay، داشبورد reconciliation، disput/chargeback، جدول قواعد لغو بدون magic number، refund SLA tracker و لینک پرداخت.</div></div>
+      <div class="tags"><span class="tag">Payment router</span><span class="tag">Insurance</span><span class="tag">Ledger</span></div>
+    </div>
+
+    <div class="card"><span class="id">M5</span> <span class="pill p-new">جدید + ارتقا</span>
+      <h2>اعلان چندکاناله و مرکز ترجیحات</h2>
+      <div class="from">از: فاز ۶.۱ (Outbox، worker، retry، DLQ، SMS)</div>
+      <div class="sec"><b>ارتقا</b><div>ارکستراتور SMS/push/email/in-app با fallback، quiet hours، زمانبندی هوشمند یادآوری، قالبهای A/B، dead-letter dashboard، اسکالیشن تلفنی و deep-link.</div></div>
+      <div class="tags"><span class="tag">Multi-channel</span><span class="tag">DLQ UI</span><span class="tag">Preferences</span></div>
+    </div>
+
+    <div class="card"><span class="id">M6</span> <span class="pill p-new">جدید + ارتقا</span>
+      <h2>خط لولهٔ فایل هوشمند</h2>
+      <div class="from">از: فاز ۶.۲ (signed URL، magic bytes، quarantine، scan)</div>
+      <div class="sec"><b>ارتقا</b><div>آپلود resumable، چند موتور آنتیویروس، DLP و تشخیص PHI، auto-redaction چهره/نام، OCR نتایج آزمایش، dedupe محتوایی، watermark و retention خودکار.</div></div>
+      <div class="tags"><span class="tag">OCR</span><span class="tag">DLP</span><span class="tag">Redaction</span></div>
+    </div>
+
+    <div class="card"><span class="id">M7</span> <span class="pill p-part">ناقص + ارتقا</span>
+      <h2>چت بالینی همیار</h2>
+      <div class="from">از: فاز ۶.۳/۶.۴ (conversation، consent، RLS، بازه، پیوست)</div>
+      <div class="sec"><b>ارتقا</b><div>پاسخ سریع، ترجمهٔ درونخطی، خلاصه با consent و اتصال به Scribe، اسکالیشن به تماس/ویدئو، پیشنویس AI از سوابق مجاز، SLA پاسخ و ابزار moderator.</div></div>
+      <div class="tags"><span class="tag">Scribe</span><span class="tag">Translation</span><span class="tag">Escalation</span></div>
+    </div>
+
+    <div class="card"><span class="id">M8</span> <span class="pill p-new">جدید + ارتقا</span>
+      <h2>ویدئو و ویزیت هوشمند</h2>
+      <div class="from">از: فاز ۷ (LiveKit، توکن کوتاهعمر، precheck، ضبط خاموش)</div>
+      <div class="sec"><b>ارتقا</b><div>اتاق انتظار، co-host و ضبط صفحه، خوانندهٔ زنده، dual-consent و auto-redaction، تطبیق پهنای باند، نسخه در حین تماس، خلاصهٔ post-visit و آمار join failure.</div></div>
+      <div class="tags"><span class="tag">LiveKit</span><span class="tag">Captions</span><span class="tag">E-prescription</span></div>
+    </div>
+
+    <div class="card"><span class="id">M9</span> <span class="pill p-part">پیادهشده + ارتقا</span>
+      <h2>پرونده سلامت بیمارمحور</h2>
+      <div class="from">از: فاز ۸ (RecordShare، consent، export/delete، FHIR)</div>
+      <div class="sec"><b>ارتقا</b><div>تایم لاین روندها، medication reconciliation، نمایندگی granular، قابلحمل بودن FHIR، consent receipt ledger، حذف قانونی با استثناء مالی و export رمزشده با کلید بیمار.</div></div>
+      <div class="tags"><span class="tag">FHIR</span><span class="tag">Consent ledger</span><span class="tag">Portability</span></div>
+    </div>
+
+    <div class="card"><span class="id">M10</span> <span class="pill p-new">جدید + ارتقا</span>
+      <h2>Triage و نظر دوم مسئولانه</h2>
+      <div class="from">از: فاز ۸ (triage غیرتشخیصی، red-flag، نظر دوم)</div>
+      <div class="sec"><b>ارتقا</b><div>قوانین توضیحپذیر و نسخهدار، مسیر اورژانس ۱۱۵، بازار نظر دوم با escrow و SLA، جلسات MDT، هیئت حاکمیت بالینی و جلوگیری صریح از جایگزینی پزشک.</div></div>
+      <div class="tags"><span class="tag">Explainable</span><span class="tag">Red-flag</span><span class="tag">MDT</span></div>
+    </div>
+
+    <div class="card"><span class="id">M11</span> <span class="pill p-part">پیادهشده + ارتقا</span>
+      <h2>عملیات خودمختار و قابلاعتماد</h2>
+      <div class="from">از: فاز ۹ (KMS، restore drill، monitoring، audit chain)</div>
+      <div class="sec"><b>ارتقا</b><div>SLO و error budget، مانیتورینگ synthetic، chaos drill، canary با auto-rollback، runbook-self-healing، daily security posture، cost observability، multi-region DR.</div></div>
+      <div class="tags"><span class="tag">SLO</span><span class="tag">Chaos</span><span class="tag">Auto-rollback</span></div>
+    </div>
+
+    <div class="card"><span class="id">M12</span> <span class="pill p-new">جدید + ارتقا</span>
+      <h2>تست و کیفیت مستمر</h2>
+      <div class="from">از: فاز ۵ و Gate A–E (هرم تست، ۱۰۰ درخواست همزمان)</div>
+      <div class="sec"><b>ارتقا</b><div>property-based/fuzz، mutation testing، contract tests، visual regression برای ۱۵ تم، axe accessibility، SAST/DAST/SBOM، threat model as code و قرنطینهٔ تستهای flaky.</div></div>
+      <div class="tags"><span class="tag">Mutation</span><span class="tag">A11y CI</span><span class="tag">SBOM</span></div>
+    </div>
+
+    <div class="card"><span class="id">M13</span> <span class="pill p-new">جدید + ارتقا</span>
+      <h2>تحلیل محصول بدون PHI</h2>
+      <div class="from">از: فاز ۱۰ و شاخصها (KPI تجمیعی، بازخورد هفتگی)</div>
+      <div class="sec"><b>ارتقا</b><div>فونل رزرو، cohort/retention، داشبورد بهرهوری پزشک، NPS و feedback درونبرنامهای، A/B با feature flag، telemetry privacy-safe و گزارش هفتگی go/no-go.</div></div>
+      <div class="tags"><span class="tag">Funnel</span><span class="tag">A/B</span><span class="tag">Privacy-safe</span></div>
+    </div>
+
+    <div class="card"><span class="id">M14</span> <span class="pill p-new">جدید</span>
+      <h2>اکوسیستم و رشد</h2>
+      <div class="from">فراتر از رودمپ — زمینهسازیشده توسط نقشها و ۱۱ درمانگاه دمو</div>
+      <div class="sec"><b>ارتقا</b><div>شبکهٔ درمانگاهها، فضای کاری پزشک، اشتراک سازمانی، ادغام داروخانه/آزمایشگاه، اعتبار پزشک، PWA/offline و اپ موبایل، چندزبانه، API platform و Trust center.</div></div>
+      <div class="tags"><span class="tag">Clinic network</span><span class="tag">PWA</span><span class="tag">API platform</span></div>
+    </div>
+
+    <div class="card"><span class="id">M15</span> <span class="pill p-part">پیادهشده + ارتقا</span>
+      <h2>طراحی، دسترسپذیری و تمها</h2>
+      <div class="from">از: فاز ۴ (RTL، responsive، کیبورد، کنتراست) + ۱۵ تم موجود</div>
+      <div class="sec"><b>ارتقا</b><div>Design system مشترک، تمهای فصلی/سازمانی، voice input، خوانندهٔ صفحه، فونت قابلتنظیم، WCAG 2.2 AA/AAA در CI و پیشنهاد تم بر اساس شرایط بیمار.</div></div>
+      <div class="tags"><span class="tag">15 themes</span><span class="tag">WCAG</span><span class="tag">Voice</span></div>
+    </div>
+  </div>
+
+  <footer>
+    <h3>چطور انتخاب کنم؟</h3>
+    <div>در پاسخ خود به من بگویید: «M1، M5 و M13 را اضافه کن»، یا «همهٔ موارد امنیتی و عملیات»، یا «همهٔ موارد تجربهٔ کاربر». من سپس هر ماژول انتخابشده را به برنامهٔ اجرایی (schema/API/UI/تست/گامها) تبدیل میکنم. جزئیات کامل در <code>docs/roadmap-analysis-2026-11-21.md</code> است.</div>
+  </footer>
+</div>
+</body>
+</html>

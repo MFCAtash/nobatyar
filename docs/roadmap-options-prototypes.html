@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>نوبت‌یار — نمونههای بصری ۱۵ ماژول</title>
+<style>
+  :root{--bg:#07100e;--p:#0d1f1a;--p2:#122b23;--l:#1d4437;--t:#e9f6f0;--m:#9ab8ac;--a:#35d6a4;--b:#7cc9ff}
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(900px 500px at 90% -10%,#164136,transparent 60%),var(--bg);color:var(--t);font-family:"Segoe UI",Tahoma,sans-serif;line-height:1.6}
+  .wrap{max-width:1400px;margin:auto;padding:30px 20px 60px}
+  h1{font-size:30px;margin:0 0 6px}.lead{color:var(--m);margin:0 0 22px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px}
+  .screen{background:linear-gradient(160deg,var(--p2),var(--p));border:1px solid var(--l);border-radius:16px;overflow:hidden}
+  .top{padding:10px 14px;border-bottom:1px solid var(--l);display:flex;justify-content:space-between;align-items:center;background:#0b1a15}
+  .top b{color:var(--a);font-size:13px}.top span{font-size:11px;color:var(--m)}
+  .body{padding:14px;font-size:13px;min-height:190px}
+  .body h3{margin:0 0 10px;font-size:16px}
+  .btn{background:#174b3b;border:1px solid #2c7059;color:#dff7ec;border-radius:9px;padding:5px 10px;font-size:12px;display:inline-block;margin:3px}
+  .btn.blue{background:#15344c;border-color:#2b6288}
+  .btn.warn{background:#4a3410;border-color:#7a5a1e}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
+  .bar{height:8px;border-radius:99px;background:#0b1d18;overflow:hidden;margin:5px 0}
+  .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--a),var(--b))}
+  .chip{background:#0e2c24;border:1px solid var(--l);border-radius:8px;padding:2px 8px;font-size:11px;color:var(--m)}
+  .table{width:100%;border-collapse:collapse;font-size:11.5px}
+  .table th,.table td{border-bottom:1px solid var(--l);padding:5px 4px;text-align:right;color:var(--m)}
+  .table th{color:var(--a)}
+  .slot{border:1px solid var(--l);border-radius:10px;padding:8px;margin:5px 0;background:#0b1e18}
+  .slot b{color:#eafff6}.slot small{color:var(--m)}
+  .toggles label{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed var(--l)}
+  .mono{font-family:Consolas,monospace;font-size:11px;color:#bfe9d8;background:#071713;border:1px solid var(--l);border-radius:8px;padding:8px;display:block;white-space:pre-wrap}
+  .note{background:#261d0c;border:1px solid #6b521e;color:#ffe0a3;border-radius:12px;padding:10px 14px;margin-bottom:20px;font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>نمونههای بصری — همهٔ ۱۵ ماژول</h1>
+  <p class="lead">هر کارت یک صفحهٔ واقعی آینده است. طراحی RTL، تم Emerald Night، و با feature flag مخصوص خود فعال میشود.</p>
+  <div class="note">⚠️ اینها نمونههای طراحیاند، نه پیادهسازی نهایی. پس از تأیید شما، هر صفحه به کامپوننت واقعی در <code>apps/web/src</code> تبدیل میشود.</div>
+  <div class="grid">
+
+    <div class="screen"><div class="top"><b>M1 · امنیت حساب</b><span>FF_M1_PASSKEY_FIRST</span></div><div class="body">
+      <h3>دستگاههای من</h3>
+      <div class="row"><span class="chip">Passkey ✓</span><span class="chip">آخرین فعالیت: امروز ۲۱:۱۰</span></div>
+      <div class="slot"><b>Windows · Chrome</b><div class="small">تهران · نشست فعلی</div></div>
+      <div class="slot"><b>iPhone · Safari</b><div class="small">دیروز ۱۸:۴۲ — <span class="btn">بستن</span></div></div>
+      <div class="row"><span class="btn">+ افزودن Passkey</span><span class="btn warn">خروج از همهٔ دستگاهها</span></div>
+      <h3>نمایندگیها</h3><div class="small">همسر من · فقط نتایج آزمایش · تا ۱۴۰۵/۱۲/۰۱ <span class="btn">لغو</span></div>
+    </div></div>
+
+    <div class="screen"><div class="top"><b>M2 · ماشین وضعیت</b><span>FF_M2_STATE_POLICY</span></div><div class="body">
+      <h3>شبیهساز انتقال</h3>
+      <div class="mono">PENDING_PAYMENT ──PAY──▶ PENDING_CONFIRMATION
+   │                         │
+   └──EXPIRE──▶ EXPIRED   └──DOCTOR_CONFIRM──▶ CONFIRMED
+                                  │
+                                  └──CANCEL──▶ refund: ۱۰۰٪</div>
+      <div class="row"><span class="chip">نقش: SYSTEM</span><span class="chip">Guard: paid=true</span><span class="chip">SLA: ۶h</span></div>
+      <div class="bar"><i style="width:72%"></i></div><small>شبیهسازی: پرداخت ۲ دقیقه دیررسد → جبران اجرا شد ✓</small>
+    </div></div>
+
+    <div class="screen"><div class="top"><b>M3 · رزرو هوشمند</b><span>FF_M3_SMART_BOOKING</span></div><div class="body">
+      <h3>دکتر آرش نیکومنش</h3>
+      <div class="slot"><b>سهشنبه ۱۸:۰۰</b> <span class="chip">امتیاز ۹۴</span><div class="small">نزدیکترین + کمترین احتمال تأخیر + مناسب دسترسپذیری</div></div>
+      <div class="slot"><b>چهارشنبه ۱۰:۲۰</b> <span class="chip">امتیاز ۸۱</span><div class="small">همگام با تقویم شما</div></div>
+      <div class="row"><span class="btn">رزرو دورهای هر ماه</span><span class="btn blue">افزودن به تقویم</span></div>
+    </div></div>
+
+    <div class="screen"><div class="top"><b>M4 · مالی</b><span>FF_M4_FINANCE_AUTO</span></div><div class="body">
+      <h3> Reconciliation </h3>
+      <table class="table"><tr><th>درگاه</th><th>موفقیت</th><th>کارمزد</th><th>اولویت</th></tr>
+      <tr><td>Zarinpal</td><td>۹۸٪</td><td>۱٫۵٪</td><td>۱</td></tr>
+      <tr><td>Sandbox</td><td>۱۰۰٪</td><td>۰</td><td>تست</td></tr></table>
+      <div class="row"><span class="chip">۳ تفاوت مشکوک</span><span class="btn">تخصیص خودکار</span><span class="btn warn">Disput: ۲ پرونده</span></div>
+      <small>قواعد لغو: &lt;۲۴h → ۱۰۰٪ refund · ۲–۱۲h → ۵۰٪ (جدول policy)</small>
+    </div></div>
+
+    <div class="screen"><div class="top"><b>M5 · اعلانها</b><span>FF_M5_NOTIF_ORCHESTRATOR</span></div><div class="body">
+      <h3>ترجیحات</h3><div class="toggles">
+      <label>یادآوری ۲۴ ساعت <input type="checkbox" checked></label>
+      <label>یادآوری ۲ ساعت <input type="checkbox" checked></label>
+      <label>پیامک پرداخت <input type="checkbox"></label>
+      <label>ساعات سکوت <span>۲۲:۰۰ – ۰۸:۰۰</span></label></div>
+      <div class="row"><span class="chip"> کانالها: SMS → Push → In-app</span><span class="btn">قالب A/B</span></div>
+      <small>Dead-letter: ۰ job · قدیمیترین job: ۲ ثانیه</small>
+    </div></div>
+
+    <div class="screen"><div class="top"><b>M6 · فایل</b><span>FF_M6_SMART_FILES</span></div><div class="body">
+      <h3>آپلود آزمایشگاه</h3>
+      <div class="bar"><i style="width:64%"></i></div><small>۶۴٪ · resumable</small>
+      <div class="row"><span class="chip">magic bytes ✓</span><span class="chip">Multi-AV ✓</span><span class="chip">PHI: ۲ مورد</span></div>
+      <div class="slot"><b>پیشنمایش</b><div class="small">چهره و نام بیمار بهصورت خودکار پوشانده شد <span class="btn blue">تأیید</span></div></div>
+      <small>OCR: ۸ نتیجه استخراج شد → به تایم لاین اضافه شود؟</small>
+    </div></div>
+
+    <div class="screen"><div class="top"><b>M7 · چت</b><span>FF_M7_CHAT_ASSIST</span></div><div class="body">
+      <h3>گفتگو با دکتر نیکومنش</h3>
+      <div class="slot">بیمار: درد قفسهٔ سینه گاهی هست.</div>
+      <div class="slot">پزشک: لطفاً مدت و شدت را بگویید. <span class="chip">ترجمه: EN</span></div>
+      <div class="row"><span class="btn">پاسخ سریع</span><span class="btn blue">خلاصه + Scribe</span><span class="btn warn">تبدیل به ویدئو</span></div>
+      <small>وضعیت: ارسال شد ✓ · SLA پاسخ: ۴ دقیقه</small>
+    </div></div>
+
+    <div class="screen"><div class="top"><b>M8 · ویدئو</b><span>FF_M8_VIDEO_SMART</span></div><div class="body">
+      <h3>اتاق انتظار</h3>
+      <div class="row"><span class="chip">دوربین ✓</span><span class="chip">میکروفون ✓</span><span class="chip"> کیفیت: خوب</span></div>
+      <div class="bar"><i style="width:88%"></i></div>
+      <div class="row"><span class="btn">ورود به اتاق</span><span class="btn blue">اشتراک صفحه</span><span class="btn warn">ضبط (dual-consent)</span></div>
+      <small>زیرنویس زنده · فارسی → انگلیسی · خاموش پیشفرض</small>
+    </div></div>
+
+    <div class="screen"><div class="top"><b>M9 · پرونده</b><span>FF_M9_PATIENT_RECORD</span></div><div class="body">
+      <h3>تایم لاین سلامت من</h3>
+      <div class="mono">فشار خون    ▁▂▃▂▁▁▂▁  (۷ روز)
+قند خون     ▂▁▁▃▂▁▁▁  (۷ روز)
+وزن         ▁▁▂▂▃▃▄▄</div>
+      <div class="row"><span class="chip">تداخل دارویی: ۱ هشدار</span><span class="btn"> export رمزشده</span></div>
+      <small>دکتر نیکومنش نتایج آزمایش را ۲ بار دید — <span class="btn blue">consent ledger</span></small>
+    </div></div>
+
+    <div class="screen"><div class="top"><b>M10 · Triage</b><span>FF_M10_TRIAGE_GOV</span></div><div class="body">
+      <h3>ارزیابی علائم</h3>
+      <div class="slot"><b>هشدار قرمز: درد قفسهٔ سینه + تنگی نفس</b><div class="small">منبع: rule-set v3.2 · بازبینی بالینی ۱۴۰۵/۹/۱ <span class="btn warn">تماس ۱۱۵</span></div></div>
+      <div class="row"><span class="chip">غیرتشخیصی</span><span class="chip">جایگزین پزشک نیست</span></div>
+      <small>نظر دوم: متخصص قلب · ناشناس · مهلت ۲۴ ساعت ·escrow</small>
+    </div></div>
+
+    <div class="screen"><div class="top"><b>M11 · عملیات</b><span>FF_M11_AUTO_OPS</span></div><div class="body">
+      <h3>SLO / Error budget</h3>
+      <div class="row"><span class="chip">API 99.9٪</span><span class="chip">Burn rate 0.3</span><span class="chip">Rollout: ۲۵٪</span></div>
+      <div class="bar"><i style="width:42%"></i></div><small>مصرف بودجه: ۴۲٪</small>
+      <div class="row"><span class="btn">Chaos: Redis down</span><span class="btn blue">Runbook: restore</span><span class="btn">Synthetic probe ✓</span></div>
+    </div></div>
+
+    <div class="screen"><div class="top"><b>M12 · کیفیت</b><span>FF_M12_QUALITY</span></div><div class="body">
+      <h3>داشبورد کیفیت</h3>
+      <table class="table"><tr><th>تست</th><th>نتیجه</th></tr>
+      <tr><td>Unit</td><td>۵۴۵ ✓</td></tr><tr><td>Integration</td><td>۱۱ فایل ✓</td></tr>
+      <tr><td>Mutation</td><td>۸۲٪</td></tr><tr><td>axe / ۱۵ تم</td><td>صفر خطا</td></tr></table>
+      <div class="row"><span class="chip">Flaky: sse.test.ts → قرنطینه</span><span class="btn">SBOM</span></div>
+    </div></div>
+
+    <div class="screen"><div class="top"><b>M13 · تحلیل</b><span>FF_M13_PRODUCT_ANALYTICS</span></div><div class="body">
+      <h3>فونل رزرو</h3>
+      <div class="mono">جستوجو     ۱۰٬۰۰۰  ██████████
+اسلات      ۶٬۲۰۰   ██████
+پرداخت     ۳٬۱۰۰   ███
+تأیید      ۲٬۹۰۰   ███</div>
+      <div class="row"><span class="chip">Cohort هفته ۱: ۳۲٪ retention</span><span class="btn">A/B: پیشنهاد اسلات</span></div>
+      <small>telemetry: هششده، بدون محتوای سلامت</small>
+    </div></div>
+
+    <div class="screen"><div class="top"><b>M14 · اکوسیستم</b><span>FF_M14_ECOSYSTEM</span></div><div class="body">
+      <h3>شبکه درمانگاهها</h3>
+      <div class="slot"><b>کلینیک قلب و عروق امید</b><div class="small">۱۱ درمانگاه · ۳۸ پزشک · نقشه · نوبتدهی مرکزی</div></div>
+      <div class="row"><span class="btn">PWA نصب</span><span class="btn blue">فضای کاری پزشک</span><span class="btn">بسته سازمانی</span></div>
+      <small>حالت offline: نوبتهای اخیر قابل مشاهده</small>
+    </div></div>
+
+    <div class="screen"><div class="top"><b>M15 · طراحی</b><span>FF_M15_WCAG</span></div><div class="body">
+      <h3>تنظیمات دسترسپذیری</h3>
+      <div class="toggles"><label>تم <span>۱۵ تم + فصلی</span></label>
+      <label>اندازه فونت <span>۱۲۵٪</span></label>
+      <label>خواننده صفحه <input type="checkbox" checked></label>
+      <label>ورود صوتی <input type="checkbox"></label></div>
+      <div class="row"><span class="chip">WCAG 2.2 AA</span><span class="chip">Keyboard-only</span><span class="btn">پیشنهاد تم</span></div>
+    </div></div>
+
+  </div>
+</div>
+</body>
+</html>
