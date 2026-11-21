@@ -15,6 +15,8 @@ export function DemoAutoLogin() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // مرورگرهای اتوماتیک (Playwright) نباید بهصورت دمو وارد شوند؛ جریان OTP را تست میکنند.
+    if (typeof navigator !== "undefined" && (navigator as Navigator & { webdriver?: boolean }).webdriver === true) return;
     if (tried.current || status === "loading" || status === "authed") return;
     tried.current = true;
     void (async () => {
