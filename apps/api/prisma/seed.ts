@@ -2,7 +2,8 @@
  * seed دیتابیس. اجرا: pnpm db:seed (با DATABASE_URL مالک).
  *
  *  - تخصص‌ها: همیشه (idempotent؛ upsert).
- *  - کاربران نمونه‌ی توسعه (دکتر/بیمار/ادمین با شماره‌های ثابت و عمومی): فقط در غیر production (src/admin/bootstrap-policy.ts).
+ *  - دادهٔ نمایشی کامل (درمانگاه‌ها، پزشکان متخصص، بیماران و نوبت‌های پیش‌فرض): فقط در غیر production.
+ *    منبع داده: src/admin/demo-data.ts · منطق: prisma/seed-demo.ts
  *  - production: هرگز کاربر نمونه نمی‌سازد؛ اگر در دیتابیس کاربر نمونه‌ای پیدا کند با کد خروج ۱ شکست می‌خورد.
  *    ادمین واقعیِ اول با `create-admin` ساخته می‌شود (docs/deployment.md).
  */
@@ -11,34 +12,30 @@ import { PrismaClient } from "@prisma/client";
 import { aad, FieldCrypto } from "../src/crypto/field-crypto";
 import { normalizeIranMobile } from "../src/crypto/phone";
 import { demoPhonesNormalized, planSeed } from "../src/admin/bootstrap-policy";
+import { SPECIALTIES } from "../src/admin/demo-data";
+import { seedDemoRoster } from "./seed-demo";
 
 const prisma = new PrismaClient();
 
-const SPECIALTIES = [
-  ["general", "پزشک عمومی"],
-  ["cardiology", "قلب و عروق"],
-  ["dermatology", "پوست و مو"],
-  ["pediatrics", "کودکان"],
-  // فاز ۸: هم‌خوان با کاتالوگ triage
-  ["internal", "داخلی"], ["neurology", "مغز و اعصاب"], ["gastroenterology", "گوارش و کبد"], ["orthopedics", "ارتوپدی"],
-  ["ent", "گوش، حلق و بینی"], ["urology", "کلیه و مجاری ادراری"], ["gynecology", "زنان و زایمان"], ["psychiatry", "روان‌پزشکی"],
-  ["ophthalmology", "چشم‌پزشکی"], ["endocrinology", "غدد و متابولیسم"],
-] as const;
-
 type Tx = Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0];
-
-async function createUser(tx: Tx, crypto: FieldCrypto, phone: string, role: "PATIENT" | "DOCTOR" | "ADMIN") {
-  const norm = normalizeIranMobile(phone)!;
-  const id = randomUUID();
-  return tx.user.create({
-    data: { id, role, phoneHash: crypto.blindIndex(norm, "phone"), phoneEnc: crypto.encrypt(norm, aad("users", id, "phone")) },
-  });
-}
 
 /** کاربر نمونه در دیتابیس هست؟ (فقط وقتی کلیدهای رمزنگاری در دسترس باشند قابل تشخیص است.) */
 async function demoUsersPresent(tx: Tx, crypto: FieldCrypto): Promise<number> {
   const hashes = demoPhonesNormalized().map((p) => crypto.blindIndex(p, "phone"));
   return tx.user.count({ where: { phoneHash: { in: hashes } } });
+}
+
+/** ادمین نمایشی؛ در roster پزشک/بیمار نیست و فقط یک‌بار ساخته می‌شود. */
+async function ensureDemoAdmin(tx: Tx, crypto: FieldCrypto): Promise<void> {
+  const norm = normalizeIranMobile("09120000003")!;
+  const phoneHash = crypto.blindIndex(norm, "phone");
+  const existing = await tx.user.findUnique({ where: { phoneHash }, select: { id: true, role: true } });
+  if (existing) {
+    if (existing.role !== "ADMIN") await tx.user.update({ where: { id: existing.id }, data: { role: "ADMIN", status: "ACTIVE" } });
+    return;
+  }
+  const id = randomUUID();
+  await tx.user.create({ data: { id, role: "ADMIN", phoneHash, phoneEnc: crypto.encrypt(norm, aad("users", id, "phone")) } });
 }
 
 async function main() {
@@ -67,21 +64,16 @@ async function main() {
       const n = await demoUsersPresent(tx, crypto);
       if (n > 0) {
         throw new Error(
-          `${n} کاربر نمونه‌ی توسعه در دیتابیس production پیدا شد (شماره‌های 0912000000x). آن‌ها را غیرفعال/حذف کنید و ورودشان را باطل کنید؛ سپس دوباره اجرا کنید.`,
+          `${n} کاربر نمونه‌ی توسعه در دیتابیس production پیدا شد (شماره‌های 091200000xx). آن‌ها را غیرفعال/حذف کنید و ورودشان را باطل کنید؛ سپس دوباره اجرا کنید.`,
         );
       }
       return;
     }
 
     if (!plan.demoUsers || !crypto) return console.log("demo users skipped (SEED_DEMO_USERS=false)");
-    if ((await demoUsersPresent(tx, crypto)) > 0) return console.log("demo users already applied");
 
-    const doc = await createUser(tx, crypto, "09120000001", "DOCTOR");
-    await tx.doctorProfile.create({ data: { userId: doc.id, fullName: "دکتر نمونه", consultationFeeRial: 3_000_000n, isListed: true } });
-    const pat = await createUser(tx, crypto, "09120000002", "PATIENT");
-    await tx.patientProfile.create({ data: { userId: pat.id, fullName: "بیمار نمونه" } });
-    await createUser(tx, crypto, "09120000003", "ADMIN");
-    console.log("seeded demo users: 1 doctor, 1 patient, 1 admin (synthetic, dev only)");
+    await ensureDemoAdmin(tx, crypto);
+    await seedDemoRoster(tx, crypto);
   });
 }
 

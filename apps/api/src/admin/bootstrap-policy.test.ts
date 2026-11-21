@@ -35,7 +35,8 @@ describe("checkAdminPhone", () => {
   it("همه‌ی شماره‌های نمونه رد می‌شوند (به هر قالب)", () => {
     for (const p of DEMO_PHONES) expect(checkAdminPhone(p, p)).toEqual({ ok: false, reason: "demo" });
     expect(checkAdminPhone("+989120000003", "989120000003")).toEqual({ ok: false, reason: "demo" });
-    expect(demoPhonesNormalized()).toEqual(["989120000001", "989120000002", "989120000003"]);
+    expect(demoPhonesNormalized()).toEqual(DEMO_PHONES.map((p) => `98${p.slice(1)}`));
+    expect(demoPhonesNormalized()).toHaveLength(DEMO_PHONES.length);
   });
   it("شماره‌ی ساختگی/پلکانی ⇒ suspicious", () => {
     expect(checkAdminPhone("09111111111", "09111111111")).toEqual({ ok: false, reason: "suspicious" });

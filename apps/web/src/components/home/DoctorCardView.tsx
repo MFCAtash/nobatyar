@@ -18,6 +18,7 @@ export function DoctorCardView({ doctor: d, compared, onToggleCompare }: { docto
           </div>
         </div>
         <div className="chips">{d.specialties.map((s) => <span key={s.slug} className="badge badge-info">{s.nameFa}</span>)}</div>
+        {d.clinic?.name && <p className="muted small m-0">محل ویزیت: {d.clinic.name}{d.clinic.address ? ` — ${d.clinic.address}` : ""}</p>}
         {d.bio && <p className="muted small m-0">{d.bio.slice(0, 110)}{d.bio.length > 110 ? "…" : ""}</p>}
       </Link>
     </div>

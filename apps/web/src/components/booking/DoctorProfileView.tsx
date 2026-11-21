@@ -12,6 +12,13 @@ export function DoctorProfileView({ doctor }: { doctor: DoctorCard }) {
         </div>
       </div>
       {doctor.bio && <p>{doctor.bio}</p>}
+      {doctor.clinic && (
+        <div className="note-box">
+          <div><strong>{doctor.clinic.name ?? "مطب پزشک"}</strong></div>
+          {doctor.clinic.address && <div className="muted small">{doctor.clinic.address}</div>}
+          {doctor.clinic.phone && <div className="muted small">تلفن: {doctor.clinic.phone}</div>}
+        </div>
+      )}
       <p className="muted small">هزینه‌ی ویزیت: <strong><Money rial={doctor.consultationFeeRial} /></strong> · مدت هر نوبت <Num value={doctor.slotMinutes} /> دقیقه</p>
     </section>
   );

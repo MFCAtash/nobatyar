@@ -1,12 +1,22 @@
 import { normalizeIranMobile } from "../crypto/phone";
+import { DEMO_DOCTORS, DEMO_PATIENTS } from "./demo-data";
 
 /**
  * قواعد خالص (بدون I/O) برای seed و ساخت ادمین اولیه — قابل تست و مشترک بین prisma/seed.ts و prisma/create-admin.ts.
  * هدف: هیچ حساب نمونه/پیش‌فرضی در production ساخته نشود و ادمین اولیه فقط با شماره‌ی واقعیِ تأییدشده‌ی اپراتور ساخته شود.
  */
 
-/** شماره‌های کاربران نمونه‌ی توسعه؛ هرگز نباید در production وجود داشته باشند. */
-export const DEMO_PHONES = ["09120000001", "09120000002", "09120000003"] as const;
+/**
+ * شماره‌های کاربران نمونه‌ی توسعه (سه نقش پایه + roster نمایشی پزشکان/بیماران)؛
+ * هرگز نباید در production وجود داشته باشند.
+ */
+export const DEMO_PHONES: readonly string[] = [
+  ...new Set([
+    "09120000001", "09120000002", "09120000003",
+    ...DEMO_DOCTORS.map((d) => d.phone),
+    ...DEMO_PATIENTS.map((p) => p.phone),
+  ]),
+];
 
 /** نرمال‌شده‌ی شماره‌های نمونه (۹۸۹…). */
 export function demoPhonesNormalized(): string[] {
