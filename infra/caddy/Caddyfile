@@ -1,0 +1,98 @@
+# نوبتیار — Caddy: TLS خودکار (Let's Encrypt) + reverse proxy
+# متغیرها از compose می‌آیند: DOMAIN، LIVEKIT_DOMAIN، STORAGE_DOMAIN، ACME_EMAIL
+{
+	email {$ACME_EMAIL}
+}
+
+# upstream ی API: DNS ی Docker همه‌ی نمونه‌ها را برمی‌گرداند (docker compose up --scale api=N)؛
+# Caddy هر ۵ ثانیه دوباره resolve می‌کند و بین نمونه‌ها پخش می‌کند.
+# flush_interval -1 = بدون بافر (SSE اعلان‌ها). چت socket.io فقط websocket است ⇒ بدون sticky session.
+(api_upstream) {
+	reverse_proxy {
+		dynamic a {
+			name api
+			port 3000
+			refresh 5s
+			resolvers 127.0.0.11
+			dial_timeout 2s
+		}
+		lb_policy least_conn
+		flush_interval -1
+		health_uri /api/v1/health
+		health_interval 10s
+	}
+}
+
+{$DOMAIN} {
+	# فشرده‌سازی فقط برای مسیرهایی که stream نیستند
+	@compressible not path /api/v1/notifications/stream /socket.io/*
+	encode @compressible zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		-Server
+	}
+
+	# مسیرهای عملیاتی فقط داخل شبکه‌ی docker (Prometheus/blackbox)؛ از اینترنت ۴۰۴
+	@internal path /api/v1/metrics /api/v1/health/ready
+	handle @internal {
+		respond 404
+	}
+
+	# SSE اعلان‌ها: بدون فشرده‌سازی (فشرده‌سازی جریان را بافر می‌کند) و بدون بافر
+	handle /api/v1/notifications/stream {
+		import api_upstream
+	}
+
+	# چت (socket.io، websocket)
+	handle /socket.io/* {
+		import api_upstream
+	}
+
+	handle /api/* {
+		request_body {
+			max_size 12MB
+		}
+		import api_upstream
+	}
+
+	handle {
+		reverse_proxy web:3001 {
+			flush_interval -1
+		}
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}
+
+# سیگنالینگ LiveKit روی wss (رسانه‌ی UDP/TCP مستقیم به livekit می‌رود، نه از Caddy)
+{$LIVEKIT_DOMAIN} {
+	reverse_proxy livekit:7880
+}
+
+# ذخیره‌ساز فایل: مرورگر با presigned URL مستقیم آپلود/دانلود می‌کند.
+# امضای SigV4 به Host وابسته است ⇒ Host «دست‌نخورده» به MinIO برسد (پیش‌فرض reverse_proxy همین است؛ header_up Host ننویسید).
+# فقط متدهای لازم (PUT آپلود، GET/HEAD دانلود، OPTIONS ی CORS)؛ سقف بدنه = سقف فایل (۲۰MB) + سربار.
+{$STORAGE_DOMAIN} {
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		-Server
+	}
+	@badmethod not method GET HEAD PUT OPTIONS
+	respond @badmethod 405
+	request_body {
+		max_size 21MB
+	}
+	reverse_proxy minio:9000 {
+		flush_interval -1
+	}
+	log {
+		output stdout
+		format json
+	}
+}

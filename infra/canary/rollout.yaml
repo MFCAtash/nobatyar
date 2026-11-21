@@ -1,0 +1,64 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: nobatyar-api
+  labels:
+    app: nobatyar-api
+spec:
+  replicas: 10
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app: nobatyar-api
+  strategy:
+    canary:
+      canaryService: nobatyar-api-canary
+      stableService: nobatyar-api-stable
+      trafficRouting:
+        nginx:
+          stableService: nobatyar-api-stable
+          canaryService: nobatyar-api-canary
+          annotationPrefix: nginx.ingress.kubernetes.io
+      steps:
+        - setWeight: 10
+        - pause: { duration: 10m }
+        - setWeight: 25
+        - pause: { duration: 10m }
+        - setWeight: 50
+        - pause: { duration: 10m }
+        - setWeight: 100
+  template:
+    metadata:
+      labels:
+        app: nobatyar-api
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        fsGroup: 10001
+      containers:
+        - name: api
+          image: IMAGE_PLACEHOLDER
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          envFrom:
+            - secretRef:
+                name: nobatyar-api-secrets

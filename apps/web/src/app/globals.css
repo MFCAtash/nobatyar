@@ -1,0 +1,19 @@
+/* نقطه‌ی ورود استایل‌ها. ترتیب لایه‌ها: tokens < base < components < utilities (لایه‌ی بعدی همیشه بر قبلی غلبه می‌کند). */
+@layer tokens, base, components, utilities;
+@import "../styles/generated/tokens.css";
+@import "../styles/base.css";
+@import "../styles/header.css";
+@import "../styles/components.css";
+@import "../styles/scheduling.css";
+@import "../styles/pages.css";
+@import "../styles/kit.css";
+@import "../styles/chat.css";
+@import "../styles/records.css";
+@import "../styles/video-call.css";
+@import "../styles/generated/utilities.css";
+@import "../styles/motion.css";
+@import "../styles/print.css";
+@import "../styles/phase19.css";
+@import "../styles/design-system.css";
+@import "../styles/fonts.css";
+@import "../styles/phase22.css";

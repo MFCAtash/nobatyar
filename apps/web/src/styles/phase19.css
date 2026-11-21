@@ -1,0 +1,20 @@
+/* فاز ۱۹: صفحه وضعیت، پایش از راه دور، حریم خصوصی و Ambient Scribe */
+@layer components {
+  .page-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+  .wrap { flex-wrap: wrap; }
+  .ghost { background: transparent; }
+  .status-overall { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .status-overall > div { flex: 1; }
+  .status-dot { width: 14px; height: 14px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 5px color-mix(in srgb, currentColor 18%, transparent); }
+  .status-ok { color: var(--teal); }
+  .status-warn { color: var(--amber); }
+  .status-bad { color: var(--red); }
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 16px; }
+  .timeline { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+  .timeline > li { border-right: 3px solid var(--border-soft); padding-right: 14px; }
+  .vital-list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
+  .vital-list > li { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 14px; border: 1px solid var(--border-soft); border-radius: var(--radius-sm); }
+  .vital-list > li .num { margin-inline-start: auto; font-variant-numeric: tabular-nums; }
+  .vital-watch { border-color: var(--amber); }
+  .vital-alert { border-color: var(--red); }
+}

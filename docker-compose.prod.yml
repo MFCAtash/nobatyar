@@ -1,0 +1,295 @@
+# نوبتیار — production (یک میزبان). جدا از docker-compose.yml ی توسعه است.
+#
+#   cp .env.production.example .env.production      # مقادیر را پر کنید (gen:keys برای کلیدها)
+#   docker compose --env-file .env.production -f docker-compose.prod.yml build
+#   docker compose --env-file .env.production -f docker-compose.prod.yml up -d --scale api=2
+#
+# ترتیب راه‌اندازی: postgres/redis سالم ⇒ migrate (one-shot) ⇒ api/worker/web ⇒ caddy.
+# مهاجرت «بخشی از start ی API نیست»؛ یک job ی جدا که یک‌بار اجرا می‌شود و API فقط پس از موفقیتش بالا می‌آید.
+# seed ی اولیه (فقط تخصص‌ها؛ در production هرگز کاربر نمونه نمی‌سازد):
+#   docker compose --env-file .env.production -f docker-compose.prod.yml run --rm migrate seed
+# ادمین اولیه‌ی «واقعی» (شماره‌ی خودِ اپراتور، دو بار برای جلوگیری از اشتباه تایپی):
+#   docker compose --env-file .env.production -f docker-compose.prod.yml --profile ops run --rm \
+#     -e ADMIN_PHONE=09xxxxxxxxx -e ADMIN_PHONE_CONFIRM=09xxxxxxxxx create-admin
+name: nobatyar-prod
+
+x-hardening: &hardening
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+
+# فقط متغیرهایی که API «واقعاً» لازم دارد (نه کل .env: رمز Postgres/Redis owner و … به پروسه‌ی API نمی‌رسد)
+x-api-env: &api-env
+  NODE_ENV: production
+  API_PORT: "3000"
+  APP_DATABASE_URL: postgresql://${APP_DB_USER:-nobatyar_app}:${APP_DB_PASSWORD:?APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB:?POSTGRES_DB}
+  REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD}@redis:6379
+  CORS_ORIGINS: https://${DOMAIN:?DOMAIN}
+  WEB_ORIGIN: https://${DOMAIN}
+  ALLOWED_CALLBACK_ORIGINS: https://${DOMAIN}
+  TRUST_PROXY_HOPS: "1"            # دقیقاً یک proxy (Caddy) جلوی API است
+  COOKIE_SECURE: "true"
+  FIELD_KEYS: ${FIELD_KEYS:?FIELD_KEYS}
+  FIELD_KEY_ACTIVE: ${FIELD_KEY_ACTIVE:?FIELD_KEY_ACTIVE}
+  BLIND_INDEX_KEY: ${BLIND_INDEX_KEY:?BLIND_INDEX_KEY}
+  JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?JWT_ACCESS_SECRET}
+  OTP_SECRET: ${OTP_SECRET:?OTP_SECRET}
+  SMS_PROVIDER: ${SMS_PROVIDER:-kavenegar}
+  KAVENEGAR_API_KEY: ${KAVENEGAR_API_KEY:-}
+  KAVENEGAR_TEMPLATE: ${KAVENEGAR_TEMPLATE:-}
+  # ذخیره‌ساز فایل: API با «کاربر محدود به همین bucket» کار می‌کند (نه root ی MinIO)؛ presigned URL ها با آدرس عمومی ساخته می‌شوند
+  MINIO_ENDPOINT: http://minio:9000
+  MINIO_PUBLIC_ENDPOINT: https://${STORAGE_DOMAIN:?STORAGE_DOMAIN}
+  MINIO_REGION: us-east-1
+  MINIO_BUCKET: ${MINIO_BUCKET:-nobatyar-private}
+  MINIO_ACCESS_KEY: ${MINIO_APP_USER:?MINIO_APP_USER}
+  MINIO_SECRET_KEY: ${MINIO_APP_PASSWORD:?MINIO_APP_PASSWORD}
+  LIVEKIT_URL: wss://${LIVEKIT_DOMAIN:?LIVEKIT_DOMAIN}
+  LIVEKIT_HTTP_URL: http://livekit:7880
+  LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:?LIVEKIT_API_KEY}
+  LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:?LIVEKIT_API_SECRET}
+  # پرداخت — پیش‌فرض‌ها «امن»اند: flag سندباکس روشن ⇒ API در production بالا نمی‌آید (fail-closed)
+  PAYMENT_GATEWAY: ${PAYMENT_GATEWAY:?PAYMENT_GATEWAY (zarinpal|zibal|idpay)}
+  ZARINPAL_MERCHANT_ID: ${ZARINPAL_MERCHANT_ID:-}
+  ZARINPAL_SANDBOX: ${ZARINPAL_SANDBOX:-false}
+  ZIBAL_MERCHANT: ${ZIBAL_MERCHANT:-}
+  ZIBAL_SANDBOX: ${ZIBAL_SANDBOX:-false}
+  IDPAY_API_KEY: ${IDPAY_API_KEY:-}
+  IDPAY_SANDBOX: ${IDPAY_SANDBOX:-false}
+  PAYMENT_FALLBACK_GATEWAYS: ${PAYMENT_FALLBACK_GATEWAYS:-}
+  PAYMENT_RECONCILE_AFTER_MIN: ${PAYMENT_RECONCILE_AFTER_MIN:-15}
+  PAYMENT_RECONCILE_EVERY_SEC: ${PAYMENT_RECONCILE_EVERY_SEC:-300}
+  PAYMENT_HOLD_MIN: ${PAYMENT_HOLD_MIN:-30}
+  # مانیتورینگ (Sentry، همیشه با scrubbing) و Web Push — اختیاری؛ خالی = خاموش
+  ZARINPAL_ACCESS_TOKEN: ${ZARINPAL_ACCESS_TOKEN:-}
+  ZARINPAL_REFUND_METHOD: ${ZARINPAL_REFUND_METHOD:-PAYA}
+  SENTRY_DSN: ${SENTRY_DSN:-}
+  SENTRY_ENVIRONMENT: production
+  SENTRY_RELEASE: ${IMAGE_TAG:-local}
+  VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+  VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+  VAPID_SUBJECT: ${VAPID_SUBJECT:-}
+  SSE_HEARTBEAT_SEC: ${SSE_HEARTBEAT_SEC:-25}
+  METRICS_TOKEN: ${METRICS_TOKEN:-}          # خالی = /metrics خاموش
+  ACCESS_LOG: ${ACCESS_LOG:-true}           # لاگ دسترسی JSON (بدون query/IP/بدنه)
+
+x-api-service: &api-service
+  <<: *hardening
+  image: nobatyar/api:${IMAGE_TAG:-local}
+  build: { context: ., target: api }
+  read_only: true
+  cap_drop: ["ALL"]               # API هیچ capability ی لازم ندارد (پورت 3000، کاربر غیر root)
+  tmpfs: ["/tmp"]
+  networks: [backend]
+  depends_on:
+    migrate:    { condition: service_completed_successfully }
+    minio-init: { condition: service_completed_successfully }
+    redis:      { condition: service_healthy }
+  stop_grace_period: 20s            # SSE/چت: بستن تمیز اتصال‌ها (onModuleDestroy)
+
+services:
+  # ───────── داده ─────────
+  postgres:
+    <<: *hardening
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      APP_DB_USER: ${APP_DB_USER:-nobatyar_app}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
+      - ./infra/postgres/01-roles.sh:/docker-entrypoint-initdb.d/01-roles.sh:ro
+    networks: [backend]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    <<: *hardening
+    image: redis:7-alpine
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    command: ["sh", "-c", "exec redis-server --requirepass \"$$REDIS_PASSWORD\" --appendonly yes"]
+    volumes: [redisdata:/data]
+    networks: [backend]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # ───────── ذخیره‌ساز فایل (پیوست چت و مدارک پرونده) ─────────
+  # فقط داخل شبکه‌ی docker؛ مرورگر از راه Caddy (STORAGE_DOMAIN) با presigned URL مستقیم آپلود/دانلود می‌کند.
+  minio:
+    <<: *hardening
+    image: minio/minio:RELEASE.2024-10-13T13-34-11Z   # تگ را پیش از استقرار با آخرین نسخه‌ی پایدار تطبیق دهید و پین نگه دارید
+    command: ["server", "/data"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD}
+      MINIO_BROWSER: "off"                               # کنسول وب خاموش (سطح حمله)
+      MINIO_API_CORS_ALLOW_ORIGIN: https://${DOMAIN:?DOMAIN}
+    volumes: [miniodata:/data]
+    networks: [backend]
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # job ی یک‌باره و idempotent: bucket خصوصی + سیاست حداقلی + کاربر سرویس (API هرگز root ی MinIO را نمی‌بیند)
+  minio-init:
+    image: minio/mc:RELEASE.2024-10-08T09-37-26Z
+    restart: "no"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET: ${MINIO_BUCKET:-nobatyar-private}
+      MINIO_APP_USER: ${MINIO_APP_USER:?MINIO_APP_USER}
+      MINIO_APP_PASSWORD: ${MINIO_APP_PASSWORD:?MINIO_APP_PASSWORD}
+    networks: [backend]
+    depends_on:
+      minio: { condition: service_healthy }
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"
+        mc mb --ignore-existing "local/$$MINIO_BUCKET"
+        mc anonymous set none "local/$$MINIO_BUCKET"
+        cat > /tmp/app-policy.json <<POLICY
+        {"Version":"2012-10-17","Statement":[
+          {"Effect":"Allow","Action":["s3:GetObject","s3:PutObject","s3:DeleteObject"],"Resource":["arn:aws:s3:::$$MINIO_BUCKET/*"]},
+          {"Effect":"Allow","Action":["s3:ListBucket","s3:GetBucketLocation"],"Resource":["arn:aws:s3:::$$MINIO_BUCKET"]}
+        ]}
+        POLICY
+        mc admin policy create local nobatyar-app /tmp/app-policy.json
+        mc admin user add local "$$MINIO_APP_USER" "$$MINIO_APP_PASSWORD"
+        mc admin policy attach local nobatyar-app --user "$$MINIO_APP_USER" || mc admin user info local "$$MINIO_APP_USER" | grep -q nobatyar-app
+        echo "storage ready: private bucket + scoped service user"
+
+  # ───────── job ی مهاجرت (یک‌بار، پیش از API) ─────────
+  migrate:
+    image: nobatyar/migrate:${IMAGE_TAG:-local}
+    build: { context: ., target: migrate }
+    restart: "no"
+    environment:
+      # کاربر «مالک» (نه نقش app) — فقط همین job آن را می‌بیند
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    networks: [backend]
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  # ساخت ادمین اولیه (دستی، یک‌بار): فقط با --profile ops اجرا می‌شود. کلیدهای رمزنگاری فقط به همین job می‌رسند.
+  create-admin:
+    image: nobatyar/migrate:${IMAGE_TAG:-local}
+    profiles: ["ops"]
+    restart: "no"
+    command: ["create-admin"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      FIELD_KEYS: ${FIELD_KEYS}
+      FIELD_KEY_ACTIVE: ${FIELD_KEY_ACTIVE}
+      BLIND_INDEX_KEY: ${BLIND_INDEX_KEY}
+      ADMIN_PHONE: ${ADMIN_PHONE:-}
+      ADMIN_PHONE_CONFIRM: ${ADMIN_PHONE_CONFIRM:-}
+      ADMIN_PROMOTE_EXISTING: ${ADMIN_PROMOTE_EXISTING:-false}
+    networks: [backend]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  # ───────── برنامه ─────────
+  # api: چند نمونه (--scale api=N)؛ بدون job های زمان‌بندی‌شده
+  api:
+    <<: *api-service
+    environment:
+      <<: *api-env
+      ENABLE_WORKERS: "false"
+
+  # worker: «دقیقاً یک» نمونه برای job های BullMQ (انقضای نوبت، یادآور، …)؛ از Caddy مسیر نمی‌گیرد
+  worker:
+    <<: *api-service
+    environment:
+      <<: *api-env
+      ENABLE_WORKERS: "true"
+
+  web:
+    <<: *hardening
+    image: nobatyar/web:${IMAGE_TAG:-local}
+    build:
+      context: .
+      target: web
+      args:
+        API_URL: http://api:3000
+        LIVEKIT_PUBLIC_URL: wss://${LIVEKIT_DOMAIN:?LIVEKIT_DOMAIN}
+        STORAGE_PUBLIC_URL: https://${STORAGE_DOMAIN:?STORAGE_DOMAIN}   # CSP connect-src برای PUT مستقیم presigned
+        NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
+    environment:
+      WEB_ORIGIN: https://${DOMAIN}   # مسیر /payment/callback پشت proxy آدرس درست را برای ریدایرکت بداند
+    read_only: true
+    cap_drop: ["ALL"]
+    tmpfs: ["/tmp", "/app/apps/web/.next/cache"]
+    networks: [backend]
+    depends_on: [api]
+
+  # ───────── ویزیت تصویری ─────────
+  livekit:
+    <<: *hardening
+    image: livekit/livekit-server:v1.8
+    environment:
+      LIVEKIT_KEYS: "${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}"
+      LIVEKIT_CONFIG: |
+        port: 7880
+        log_level: info
+        rtc:
+          tcp_port: 7881
+          port_range_start: 50000
+          port_range_end: 50100
+          use_external_ip: true
+        room:
+          empty_timeout: 300
+          max_participants: 2
+        webhook:
+          api_key: ${LIVEKIT_API_KEY}
+          urls:
+            - http://api:3000/api/v1/video/webhook
+    ports:
+      # رسانه مستقیم به میزبان می‌رود (از Caddy عبور نمی‌کند): این پورت‌ها در فایروال باز باشند
+      - "7881:7881"
+      - "50000-50100:50000-50100/udp"
+    networks: [backend]
+
+  # ───────── لبه: TLS خودکار ─────────
+  caddy:
+    <<: *hardening
+    image: caddy:2-alpine
+    environment:
+      DOMAIN: ${DOMAIN}
+      LIVEKIT_DOMAIN: ${LIVEKIT_DOMAIN}
+      STORAGE_DOMAIN: ${STORAGE_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data       # گواهی‌ها — حتماً پایدار بماند (سقف نرخ Let's Encrypt)
+      - caddy_config:/config
+    networks: [backend, edge]
+    depends_on: [api, web, livekit, minio]
+
+networks:
+  backend: {}                  # api باید به SMS/درگاه بیرونی هم برسد؛ پورتی روی میزبان باز نمی‌شود (فقط caddy/livekit)
+  edge: {}
+
+volumes:
+  pgdata:
+  redisdata:
+  miniodata:       # پیوست‌های پزشکی — در برنامه‌ی پشتیبان‌گیری حتماً بیاید (docs/runbooks)
+  caddy_data:
+  caddy_config:

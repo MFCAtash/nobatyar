@@ -1,0 +1,17 @@
+title = "nobatyar gitleaks"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "مقادیر نمونه/موقتِ غیرواقعی"
+# فایل‌های نمونه و lockfile
+paths = [
+  '''(^|/)\.env\.example$''',
+  '''pnpm-lock\.yaml$''',
+]
+# رمزهای یک‌بارمصرفِ سرویس‌های CI (فقط روی container های موقت)
+regexes = [
+  '''ci_(owner|app)_pw''',
+  '''change-me[a-z0-9-]*''',
+]

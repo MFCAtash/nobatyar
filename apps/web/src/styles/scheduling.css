@@ -1,0 +1,9 @@
+/* انتخاب روز و ساعت نوبت */
+@layer components {
+.days { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x mandatory; }
+.days .chip { scroll-snap-align: start; white-space: nowrap; }
+.slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; margin: 14px 0; }
+.slot { padding: 10px 6px; text-align: center; border-radius: var(--radius-sm); border: 1px solid var(--border-soft); background: var(--glass); color: var(--ink); font: inherit; font-weight: 700; cursor: pointer; transition: all .2s; }
+.slot:hover { border-color: var(--teal); }
+.slot[aria-pressed="true"] { background: linear-gradient(135deg, var(--teal), var(--teal-dim)); color: var(--on-accent); border-color: transparent; box-shadow: 0 0 18px var(--teal-glow); }
+}

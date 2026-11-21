@@ -1,0 +1,88 @@
+# قواعد هشدار نوبتیار. هر هشدار critical در docs/runbooks/ یک راهنمای اقدام دارد (annotation runbook).
+groups:
+  - name: availability
+    rules:
+      - alert: ApiInstanceDown
+        expr: up{job=~"api|worker"} == 0
+        for: 2m
+        labels: { severity: critical }
+        annotations: { summary: "نمونه‌ی {{ $labels.job }} ({{ $labels.instance }}) در دسترس نیست", runbook: "docs/runbooks/incident-response.md" }
+      - alert: ApiNotReady
+        expr: probe_success{job="ready"} == 0
+        for: 2m
+        labels: { severity: critical }
+        annotations: { summary: "{{ $labels.instance }} آماده نیست (DB یا Redis)", runbook: "docs/runbooks/db-redis-outage.md" }
+      - alert: ExternalProbeFailing
+        expr: probe_success{job="external"} == 0
+        for: 3m
+        labels: { severity: critical }
+        annotations: { summary: "{{ $labels.instance }} از بیرون در دسترس نیست", runbook: "docs/runbooks/incident-response.md" }
+      - alert: TlsCertExpiringSoon
+        expr: (probe_ssl_earliest_cert_expiry{job="external"} - time()) / 86400 < 14
+        for: 1h
+        labels: { severity: warning }
+        annotations: { summary: "گواهی TLS ی {{ $labels.instance }} کمتر از ۱۴ روز اعتبار دارد (Caddy باید تمدید کند)" }
+
+  - name: slo
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(nobatyar_http_requests_total{status="5xx"}[5m])) / clamp_min(sum(rate(nobatyar_http_requests_total[5m])), 0.001) > 0.02
+          and sum(rate(nobatyar_http_requests_total[5m])) > 0.05
+        for: 5m
+        labels: { severity: critical }
+        annotations: { summary: "نرخ خطای ۵xx بالاتر از ۲٪ (SLO ی دسترس‌پذیری)", runbook: "docs/runbooks/incident-response.md" }
+      - alert: HighLatencyP95
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(nobatyar_http_request_duration_seconds_bucket{route!~".*/notifications/stream"}[5m]))) > 1
+        for: 10m
+        labels: { severity: warning }
+        annotations: { summary: "p95 تأخیر API بیش از ۱ ثانیه (SLO: ۵۰۰ms)" }
+
+  - name: money
+    rules:
+      - alert: PaidButNotConfirmed
+        expr: max(nobatyar_payments_attention{kind="paid_unsynced"}) > 0
+        for: 15m
+        labels: { severity: critical }
+        annotations: { summary: "بیمار پرداخت کرده ولی نوبتش هماهنگ نشده ({{ $value }} مورد)", runbook: "docs/runbooks/payment-incident.md" }
+      - alert: PaymentAmountMismatch
+        expr: max(nobatyar_payments_attention{kind="mismatch_attempt"}) > 0
+        for: 1m
+        labels: { severity: critical }
+        annotations: { summary: "ناهمخوانی مبلغ بین DB و درگاه (بررسی دستی فوری)", runbook: "docs/runbooks/payment-incident.md" }
+      - alert: RefundNeedsReview
+        expr: max(nobatyar_refunds{status="REVIEW"}) > 0
+        for: 15m
+        labels: { severity: critical }
+        annotations: { summary: "استرداد با نتیجه‌ی مبهم منتظر بررسی دستی است", runbook: "docs/runbooks/payment-incident.md" }
+      - alert: RefundBacklog
+        expr: max(nobatyar_refunds{status=~"PENDING|MANUAL|FAILED"}) > 0
+        for: 24h
+        labels: { severity: warning }
+        annotations: { summary: "استرداد اجرا‌نشده بیش از ۲۴ ساعت مانده (/admin/refunds)" }
+      - alert: StaleInitiatedPayments
+        expr: max(nobatyar_payments_attention{kind="stale_initiated"}) > 5
+        for: 30m
+        labels: { severity: warning }
+        annotations: { summary: "پرداخت‌های INITIATED قدیمی زیاد است؛ job ی بازبینی یا درگاه را بررسی کنید", runbook: "docs/runbooks/payment-incident.md" }
+      - alert: PaymentsAllFailing
+        expr: max(nobatyar_business_last_hour{event="payment_attempt_failed"}) >= 10 and max(nobatyar_business_last_hour{event="payment_paid"}) == 0
+        for: 10m
+        labels: { severity: critical }
+        annotations: { summary: "در یک ساعت گذشته فقط پرداخت ناموفق داشته‌ایم (احتمالاً قطعی درگاه)", runbook: "docs/runbooks/payment-incident.md" }
+      - alert: OutboxDeadEvents
+        expr: max(nobatyar_outbox{status="DEAD"}) > 0
+        for: 5m
+        labels: { severity: critical }
+        annotations: { summary: "رویداد Outbox ی DEAD داریم (اعلان/اثر جانبی تحویل نشد)", runbook: "docs/runbooks/outbox.md" }
+      - alert: OutboxBacklog
+        expr: max(nobatyar_outbox_oldest_pending_seconds) > 600
+        for: 10m
+        labels: { severity: warning }
+        annotations: { summary: "قدیمی‌ترین رویداد Outbox بیش از ۱۰ دقیقه در صف مانده (worker/relay از کار افتاده؟)", runbook: "docs/runbooks/outbox.md" }
+      - alert: RefundApprovalWaiting
+        expr: max(nobatyar_refund_approvals_waiting) > 0
+        for: 2h
+        labels: { severity: warning }
+        annotations: { summary: "درخواست تأیید استرداد بیش از ۱ ساعت منتظر Checker است (/admin/refunds)" }

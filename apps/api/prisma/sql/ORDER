@@ -1,0 +1,14 @@
+# ترتیب اعمال فایل‌های SQL امنیتی به‌عنوان مهاجرت (پس از مهاجرت init ی schema.prisma). هر خط = نام فایل بدون .sql
+# منبع واحد برای scripts/bootstrap-baseline.sh و scripts/check-repo-integrity.sh. فقط به انتها اضافه کنید.
+hardening
+phase3
+phase7
+phase8
+payment-gateway
+phase12
+phase13-refunds
+phase14-chat-rls
+phase17-backend
+phase18-ops
+phase19-backend
+phase24-backend

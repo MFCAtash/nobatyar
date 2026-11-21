@@ -1,0 +1,59 @@
+{
+  "project": "NobatYar",
+  "version": "1.0",
+  "date": "2026-10-28",
+  "files": [
+    {
+      "path": "README_FA.md",
+      "bytes": 2644
+    },
+    {
+      "path": "docs/01_MASTER_ROADMAP_FA.md",
+      "bytes": 9659
+    },
+    {
+      "path": "docs/02_ARCHITECTURE_AND_DATA_FLOW_FA.md",
+      "bytes": 4025
+    },
+    {
+      "path": "docs/03_BACKLOG_AND_SPRINTS_FA.md",
+      "bytes": 5440
+    },
+    {
+      "path": "docs/04_SECURITY_PRIVACY_CHECKLIST_FA.md",
+      "bytes": 3243
+    },
+    {
+      "path": "docs/05_TESTING_RELEASE_GATES_FA.md",
+      "bytes": 2862
+    },
+    {
+      "path": "docs/06_DECISIONS_AND_OPEN_QUESTIONS_FA.md",
+      "bytes": 3140
+    },
+    {
+      "path": "docs/07_OPERATIONS_RUNBOOK_FA.md",
+      "bytes": 2423
+    },
+    {
+      "path": "docs/08_RISKS_AND_METRICS_FA.md",
+      "bytes": 2282
+    },
+    {
+      "path": "docs/09_DEVELOPER_HANDOFF_TEMPLATE_FA.md",
+      "bytes": 1307
+    },
+    {
+      "path": "reference/SOURCE_SNAPSHOT_NOTE_FA.txt",
+      "bytes": 436
+    },
+    {
+      "path": "reference/nobatyar-phase8-fixed.zip",
+      "bytes": 387520
+    },
+    {
+      "path": "خلاصه_اجرایی_نوبت‌یار.txt",
+      "bytes": 1912
+    }
+  ]
+}

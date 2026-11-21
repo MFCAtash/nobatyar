@@ -1,0 +1,9 @@
+apiVersion: 1
+providers:
+  - name: Nobatyar
+    orgId: 1
+    folder: نوبتیار
+    type: file
+    disableDeletion: true
+    updateIntervalSeconds: 30
+    options: { path: /var/lib/grafana/dashboards }

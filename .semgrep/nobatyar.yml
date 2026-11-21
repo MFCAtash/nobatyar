@@ -1,0 +1,97 @@
+rules:
+  - id: nobatyar-no-unsafe-raw-sql
+    languages: [typescript]
+    severity: ERROR
+    message: "$queryRawUnsafe/$executeRawUnsafe ممنوع است (SQL injection و دور زدن RLS). از tagged template ی Prisma.sql استفاده کنید."
+    pattern-either:
+      - pattern: $X.$queryRawUnsafe(...)
+      - pattern: $X.$executeRawUnsafe(...)
+    paths:
+      include: ["apps/api/src/**"]
+
+  - id: nobatyar-no-eval
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: "eval/new Function ممنوع است."
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: new Function(...)
+
+  - id: nobatyar-no-console-in-api
+    languages: [typescript]
+    severity: WARNING
+    message: "در API از Logger نست استفاده کنید؛ console می‌تواند داده‌ی سلامت/PII را در لاگ بریزد (docs/data-classification.md)."
+    pattern-either:
+      - pattern: console.log(...)
+      - pattern: console.info(...)
+      - pattern: console.debug(...)
+      - pattern: console.error(...)
+    paths:
+      include: ["apps/api/src/**"]
+
+  - id: nobatyar-payment-verify-stub
+    languages: [typescript]
+    severity: ERROR   # تأیید واقعی پیاده شد؛ بازگشت stub ⇒ CI قرمز
+    message: "تأیید پرداخت «نباید» stub باشد (verified = true). تأیید فقط با پاسخ سرور درگاه و مطابقت مبلغ/authority (payment-settlement.ts)."
+    pattern-either:
+      - pattern: const verified = true;
+      - pattern: let verified = true;
+    paths:
+      include: ["apps/api/src/payment/**"]
+
+  - id: nobatyar-payment-trust-browser-status
+    languages: [typescript]
+    severity: ERROR
+    message: "پارامتر Status/status ی callback مرورگر قابل جعل است؛ نباید شرط تصمیم‌گیری درباره‌ی پرداخت باشد."
+    pattern-either:
+      - pattern: if ($DTO.status === "OK") { ... }
+      - pattern: if ($DTO.status !== "OK") { ... }
+    paths:
+      include: ["apps/api/src/payment/**"]
+
+  - id: nobatyar-sentry-no-default-pii
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: "sendDefaultPii=true داده‌ی شخصی (IP، کوکی، هدر) را به Sentry می‌فرستد؛ ممنوع."
+    pattern: "sendDefaultPii: true"
+
+  - id: nobatyar-sentry-init-needs-scrub
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: "Sentry.init بدون beforeSend ی پاک‌ساز (scrubEvent از @nobatyar/shared) مجاز نیست."
+    patterns:
+      - pattern: |
+          $S.init({...})
+      - pattern-not: |
+          $S.init({..., beforeSend: ..., ...})
+      - metavariable-regex:
+          metavariable: $S
+          regex: "^(Sentry|S|mod)$"
+    paths:
+      exclude: ["**/*.test.ts", "**/*.test.tsx"]
+
+  - id: nobatyar-sw-never-cache-api
+    languages: [javascript]
+    severity: ERROR
+    message: "Service Worker نباید پاسخ API/داده را cache کند؛ فقط allowlist ی استاتیک در sw-policy.js."
+    pattern-either:
+      - pattern: |
+          caches.put("/api/...", ...)
+      - pattern: |
+          $C.addAll([..., "/api/...", ...])
+    paths:
+      include: ["apps/web/public/**"]
+
+  - id: nobatyar-no-browser-storage-of-tokens
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: "توکن/داده‌ی سلامت را در localStorage/sessionStorage نگه ندارید (XSS). access token فقط در حافظه است."
+    patterns:
+      - pattern-either:
+          - pattern: localStorage.setItem($K, ...)
+          - pattern: sessionStorage.setItem($K, ...)
+      - metavariable-regex:
+          metavariable: $K
+          regex: (?i).*(token|jwt|refresh|otp|record|health).*
+    paths:
+      include: ["apps/web/src/**"]

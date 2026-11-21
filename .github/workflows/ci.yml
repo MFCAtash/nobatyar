@@ -1,0 +1,461 @@
+# نوبتیار — CI
+# تنها چک «اجباری» برای branch protection: job با نام «CI gate». بقیه‌ی jobها شرط آن هستند.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  merge_group:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  CI: "true"
+  TURBO_TELEMETRY_DISABLED: "1"
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  workflow-lint:
+    name: Workflow lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: actionlint
+        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.4 -color
+
+  repo-integrity:
+    name: Repo integrity (lockfile، migrations، SQL امنیتی)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: pnpm-lock.yaml و prisma/migrations واقعی و هم‌خوان با prisma/sql
+        run: sh scripts/check-repo-integrity.sh
+
+  quality:
+    name: Lint & typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Lint + typecheck (همه‌ی workspace ها)
+        run: pnpm exec turbo run lint typecheck --continue
+
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Unit tests
+        run: pnpm exec turbo run test --continue
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      API_URL: http://localhost:3000
+      LIVEKIT_PUBLIC_URL: ws://localhost:7880
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Build (shared → api → web)
+        run: pnpm exec turbo run build
+
+  integration:
+    name: Integration (Postgres + Redis)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: nobatyar_owner
+          POSTGRES_PASSWORD: ci_owner_pw
+          POSTGRES_DB: nobatyar_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U nobatyar_owner -d nobatyar_test"
+          --health-interval 5s --health-timeout 3s --health-retries 15
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 15
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      POSTGRES_USER: nobatyar_owner
+      POSTGRES_PASSWORD: ci_owner_pw
+      POSTGRES_DB: nobatyar_test
+      APP_DB_USER: nobatyar_app
+      APP_DB_PASSWORD: ci_app_pw
+      DATABASE_URL: postgresql://nobatyar_owner:ci_owner_pw@127.0.0.1:5432/nobatyar_test
+      APP_DATABASE_URL: postgresql://nobatyar_app:ci_app_pw@127.0.0.1:5432/nobatyar_test
+      TEST_OWNER_URL: postgresql://nobatyar_owner:ci_owner_pw@127.0.0.1:5432/nobatyar_test
+      TEST_APP_URL: postgresql://nobatyar_app:ci_app_pw@127.0.0.1:5432/nobatyar_test
+      TEST_REDIS_URL: redis://127.0.0.1:6379
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - name: Build shared package
+        run: pnpm --filter @nobatyar/shared build
+
+      - name: Prepare database (extensions, app role, migrations)
+        env:
+          ALLOW_TEMP_MIGRATIONS: "true"   # گذرا: تا وقتی migrations commit نشده این job ها سیگنال بدهند؛ job ی «Repo integrity» همزمان قرمز می‌ماند
+        run: sh scripts/ci-db-setup.sh
+
+      - name: Integration tests (RLS, ضد double-booking، Audit، auth، Redis)
+        run: pnpm --filter @nobatyar/api test:int
+
+      - name: Boot smoke test (API واقعی روی Postgres + Redis + BullMQ)
+        run: |
+          pnpm --filter @nobatyar/api build
+          set -a
+          eval "$(node apps/api/scripts/gen-keys.mjs | grep -E '^[A-Z_]+=')"
+          set +a
+          export NODE_ENV=test SMS_PROVIDER=console ENABLE_WORKERS=true
+          export REDIS_URL="$TEST_REDIS_URL" CORS_ORIGINS=http://localhost:3001 API_PORT=3000
+          node apps/api/dist/main.js > api.log 2>&1 &
+          API_PID=$!
+          ok=0
+          for _ in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:3000/api/v1/health | grep -q '"status":"ok"'; then ok=1; break; fi
+            kill -0 "$API_PID" 2>/dev/null || break
+            sleep 1
+          done
+          kill "$API_PID" 2>/dev/null || true
+          if [ "$ok" != "1" ]; then echo "::error::API did not become healthy"; cat api.log; exit 1; fi
+          grep -q "maintenance worker started" api.log || { echo "::error::BullMQ worker did not start"; cat api.log; exit 1; }
+          echo "smoke OK"
+
+      - name: Fail-closed پرداخت (sandbox در production ⇒ API نباید بالا بیاید)
+        run: |
+          set -a
+          eval "$(node apps/api/scripts/gen-keys.mjs | grep -E '^[A-Z_]+=')"
+          set +a
+          export NODE_ENV=production SMS_PROVIDER=kavenegar KAVENEGAR_API_KEY=x KAVENEGAR_TEMPLATE=x
+          export REDIS_URL="$TEST_REDIS_URL" CORS_ORIGINS=https://example.ir API_PORT=3010
+          export ALLOWED_CALLBACK_ORIGINS=https://example.ir WEB_ORIGIN=https://example.ir
+          export PAYMENT_GATEWAY=zarinpal ZARINPAL_MERCHANT_ID=11111111-2222-3333-4444-555555555555
+          export LIVEKIT_URL=wss://lk.example.ir LIVEKIT_API_KEY=k LIVEKIT_API_SECRET=0123456789012345678901234567890123456789
+          # ۱) با flag سندباکس روشن باید «بلافاصله و با خطای مشخص» متوقف شود
+          if ZARINPAL_SANDBOX=true timeout 20 node apps/api/dist/main.js > fc.log 2>&1; then
+            echo "::error::API booted with a sandbox flag in production"; cat fc.log; exit 1
+          fi
+          grep -q "sandbox flag" fc.log || { echo "::error::wrong failure reason"; cat fc.log; exit 1; }
+          # ۲) درگاه sandbox در production
+          if PAYMENT_GATEWAY=sandbox timeout 20 node apps/api/dist/main.js > fc2.log 2>&1; then
+            echo "::error::API booted with PAYMENT_GATEWAY=sandbox in production"; cat fc2.log; exit 1
+          fi
+          grep -q "sandbox" fc2.log || { echo "::error::wrong failure reason"; cat fc2.log; exit 1; }
+          # ۳) بدون پیکربندی ذخیره‌ساز (MINIO_*) در production باید «بلافاصله» متوقف شود (نه خطا در اولین آپلود کاربر)
+          if timeout 20 node apps/api/dist/main.js > fc3.log 2>&1; then
+            echo "::error::API booted in production without object storage config"; cat fc3.log; exit 1
+          fi
+          grep -q "MINIO_" fc3.log || { echo "::error::wrong failure reason (expected MINIO_*)"; cat fc3.log; exit 1; }
+          echo "fail-closed OK"
+
+      - name: Upload API log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-log
+          path: |
+            api.log
+            fc.log
+            fc2.log
+            fc3.log
+          if-no-files-found: ignore
+
+  storybook:
+    name: Storybook (axe دسترس‌پذیری + تست بصری تیره/روشن)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - name: Build Storybook
+        run: pnpm --filter @nobatyar/web build-storybook
+
+      - name: Install Chromium
+        run: pnpm --filter @nobatyar/e2e exec playwright install --with-deps chromium
+
+      - name: axe روی همه‌ی stories (هر دو تم؛ تخلف serious/critical ⇒ شکست)
+        run: pnpm --filter @nobatyar/e2e exec playwright test -c playwright.visual.config.ts stories.a11y
+
+      - name: baseline های تصویری وجود دارند؟
+        id: baseline
+        run: |
+          if ls apps/e2e/visual/__snapshots__/*.png >/dev/null 2>&1; then echo "present=true" >> "$GITHUB_OUTPUT"; else echo "present=false" >> "$GITHUB_OUTPUT"; fi
+
+      - name: تست بصری (مقایسه با baseline ها)
+        if: steps.baseline.outputs.present == 'true' && github.event_name != 'workflow_dispatch'
+        run: pnpm --filter @nobatyar/e2e exec playwright test -c playwright.visual.config.ts stories.visual
+
+      - name: ساخت baseline ها (فقط اجرای دستی یا وقتی هنوز baseline ای commit نشده)
+        if: steps.baseline.outputs.present != 'true' || github.event_name == 'workflow_dispatch'
+        run: |
+          echo "::warning::baseline تصویری commit نشده؛ آرتیفکت visual-baselines را دانلود و در apps/e2e/visual/__snapshots__ commit کنید."
+          pnpm --filter @nobatyar/e2e exec playwright test -c playwright.visual.config.ts stories.visual --update-snapshots
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: visual-baselines-and-report
+          path: |
+            apps/e2e/visual/__snapshots__
+            apps/e2e/playwright-report
+            apps/e2e/test-results
+          if-no-files-found: ignore
+          retention-days: 7
+
+  e2e-load:
+    name: E2E (Playwright) + بار (k6 ضد double-booking)
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    needs: [build]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: nobatyar_owner
+          POSTGRES_PASSWORD: ci_owner_pw
+          POSTGRES_DB: nobatyar_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U nobatyar_owner -d nobatyar_test"
+          --health-interval 5s --health-timeout 3s --health-retries 15
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 15
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      POSTGRES_USER: nobatyar_owner
+      POSTGRES_PASSWORD: ci_owner_pw
+      POSTGRES_DB: nobatyar_test
+      APP_DB_USER: nobatyar_app
+      APP_DB_PASSWORD: ci_app_pw
+      DATABASE_URL: postgresql://nobatyar_owner:ci_owner_pw@127.0.0.1:5432/nobatyar_test
+      APP_DATABASE_URL: postgresql://nobatyar_app:ci_app_pw@127.0.0.1:5432/nobatyar_test
+      API_URL: http://127.0.0.1:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - name: Build shared + API + Web
+        run: |
+          pnpm --filter @nobatyar/shared build
+          pnpm --filter @nobatyar/api build
+          pnpm --filter @nobatyar/web build
+
+      - name: Prepare database
+        env:
+          ALLOW_TEMP_MIGRATIONS: "true"
+        run: sh scripts/ci-db-setup.sh
+
+      - name: Start API (hook های تست، SMS در حافظه، درگاه sandbox) و Web
+        run: |
+          set -a
+          eval "$(node apps/api/scripts/gen-keys.mjs | grep -E '^[A-Z_]+=')"
+          set +a
+          export NODE_ENV=test SMS_PROVIDER=memory E2E_TEST_HOOKS=true ENABLE_WORKERS=true
+          export REDIS_URL=redis://127.0.0.1:6379 API_PORT=3000
+          export CORS_ORIGINS=http://localhost:3001 WEB_ORIGIN=http://localhost:3001 ALLOWED_CALLBACK_ORIGINS=http://localhost:3001
+          # فقط در CI/E2E: سقف‌های ضد سوءاستفاده‌ی OTP/ورود برای ۵۰+ کاربر آزمایشی از یک IP بالا می‌رود
+          export OTP_PER_IP_HOURLY=100000 OTP_PER_PHONE_HOURLY=100000 OTP_RESEND_COOLDOWN_SEC=0 VERIFY_PER_IP_10MIN=100000 REFRESH_PER_IP_10MIN=100000
+          export PAYMENT_RATE_PER_USER_PER_MIN=100
+          node apps/api/dist/main.js > api.log 2>&1 &
+          (cd apps/web && PORT=3001 HOSTNAME=127.0.0.1 WEB_ORIGIN=http://localhost:3001 node ../../node_modules/next/dist/bin/next start -p 3001 -H 127.0.0.1 > ../../web.log 2>&1) &
+          for _ in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3000/api/v1/health | grep -q '"status":"ok"' && curl -fsS http://127.0.0.1:3001/login >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          echo "::error::services did not start"; tail -n 50 api.log web.log; exit 1
+
+      - name: k6 — ۵۰ کاربر، یک نوبت (۱ موفق + ۴۹ خطای ۴۰۹)
+        run: |
+          docker run --rm -i --network host -e BASE_URL=http://127.0.0.1:3000/api/v1 -e USERS=50 \
+            -v "$PWD/load:/load" grafana/k6:0.54.0 run /load/double-booking.js
+
+      - name: Install Playwright browser
+        run: pnpm --filter @nobatyar/e2e exec playwright install --with-deps chromium
+
+      - name: Playwright — مسیرهای حیاتی (ورود، جستجو، رزرو، پرداخت sandbox، چت) + PWA
+        env:
+          E2E_BASE_URL: http://localhost:3001
+        run: pnpm --filter @nobatyar/e2e e2e
+
+      - name: Upload reports and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-artifacts
+          retention-days: 7
+          path: |
+            apps/e2e/playwright-report
+            apps/e2e/test-results
+            api.log
+            web.log
+
+  ops-lint:
+    name: عملیات (preflight، shellcheck، قواعد هشدار، compose)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Build API (برای preflight CLI)
+        run: |
+          pnpm --filter @nobatyar/shared build
+          pnpm --filter @nobatyar/api build
+      - name: preflight باید فایل نمونه (placeholder دارد) را «رد» کند
+        run: |
+          if node apps/api/dist/preflight.cli.js .env.production.example; then
+            echo "::error::preflight accepted a file full of placeholders"; exit 1
+          fi
+      - name: shellcheck اسکریپت‌های پشتیبان/بازیابی
+        run: shellcheck -s sh -S warning scripts/backup-db.sh scripts/restore-drill.sh scripts/check-repo-integrity.sh scripts/bootstrap-baseline.sh scripts/ci-db-setup.sh apps/api/scripts/migrate-deploy.sh
+      - name: promtool / amtool
+        run: |
+          docker run --rm --entrypoint promtool -v "$PWD/infra/monitoring:/m:ro" prom/prometheus:v2.55.1 check rules /m/alerts.yml
+          docker run --rm --entrypoint amtool -v "$PWD/infra/monitoring:/m:ro" prom/alertmanager:v0.27.0 check-config /m/alertmanager.yml
+      - name: compose (prod + monitoring) معتبر است
+        run: |
+          BACKUP_AGE_RECIPIENT=age1test docker compose --env-file .env.production.example -f docker-compose.prod.yml -f docker-compose.monitoring.yml config -q
+
+  docker:
+    name: Docker images
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require committed lockfile
+        run: test -f pnpm-lock.yaml || { echo "::error::pnpm-lock.yaml missing (turbo prune و --frozen-lockfile لازم دارند)"; exit 1; }
+      - name: Build api
+        run: docker build --target api -t nobatyar/api:ci .
+      - name: Build migrate
+        run: docker build --target migrate -t nobatyar/migrate:ci .
+      - name: Build web
+        run: >-
+          docker build --target web
+          --build-arg API_URL=http://api:3000
+          --build-arg LIVEKIT_PUBLIC_URL=wss://lk.example.ir
+          --build-arg STORAGE_PUBLIC_URL=https://s3.example.ir
+          -t nobatyar/web:ci .
+      - name: Images run as non-root
+        run: |
+          for img in api migrate web; do
+            uid="$(docker run --rm --entrypoint id "nobatyar/$img:ci" -u)"
+            echo "$img uid=$uid"
+            [ "$uid" != "0" ] || { echo "::error::$img runs as root"; exit 1; }
+          done
+      - name: Compose (production) is valid
+        run: |
+          cp .env.production.example .env.production
+          docker compose --env-file .env.production -f docker-compose.prod.yml config -q
+      - name: Caddyfile is valid
+        run: >-
+          docker run --rm
+          -e DOMAIN=example.ir -e LIVEKIT_DOMAIN=lk.example.ir -e STORAGE_DOMAIN=s3.example.ir -e ACME_EMAIL=ops@example.ir
+          -v "$PWD/infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro"
+          caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+
+  secrets:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # PR: فقط commit های همین PR؛ غیر از آن: کل تاریخچه
+          if [ "$EVENT" = "pull_request" ]; then RANGE="--log-opts=${BASE_SHA}..${HEAD_SHA}"; else RANGE=""; fi
+          docker run --rm -v "$PWD:/repo" -w /repo --entrypoint sh zricethezav/gitleaks:v8.21.2 -c \
+            "git config --global --add safe.directory /repo && gitleaks detect --source /repo --config /repo/.gitleaks.toml --redact --verbose $RANGE"
+
+  semgrep:
+    name: SAST (semgrep)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: semgrep/semgrep:1.97.0
+    steps:
+      - uses: actions/checkout@v4
+      - name: semgrep — blocking (ERROR)
+        run: >-
+          semgrep scan --metrics=off --error --severity ERROR
+          --config p/typescript --config p/nodejs --config p/react --config p/security-audit
+          --config .semgrep/
+          --exclude node_modules --exclude dist --exclude .next --exclude '*.test.ts' --exclude 'apps/api/test'
+      - name: semgrep — advisory (WARNING)
+        continue-on-error: true
+        run: >-
+          semgrep scan --metrics=off --severity WARNING
+          --config p/typescript --config p/nodejs --config p/react --config p/security-audit
+          --config .semgrep/
+          --exclude node_modules --exclude dist --exclude .next --exclude '*.test.ts' --exclude 'apps/api/test'
+
+  trivy:
+    name: Dependency & config scan (Trivy)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      # فقط HIGH/CRITICAL و فقط آسیب‌پذیری‌هایی که patch دارند؛ تا CI بی‌دلیل قرمز نماند.
+      - name: trivy fs
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret,misconfig
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+          format: table
+          skip-dirs: node_modules,.next,dist
+          trivyignores: .trivyignore
+
+  ci-gate:
+    name: CI gate
+    if: always()
+    needs: [workflow-lint, repo-integrity, quality, unit, build, storybook, integration, e2e-load, ops-lint, docker, secrets, semgrep, trivy]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: All required jobs must succeed
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "results: $RESULTS"
+          for r in $RESULTS; do
+            if [ "$r" != "success" ]; then
+              echo "::error::at least one required job did not succeed ($r)"
+              exit 1
+            fi
+          done

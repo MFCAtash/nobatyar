@@ -1,0 +1,79 @@
+# استقرار Canary با دروازهٔ بودجهٔ خطا
+# نیاز به نمونهٔ Argo Rollouts در خوشه و متغیرهای KUBE_CONFIG / PROMETHEUS_URL دارد.
+name: Canary deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      image:
+        description: "تصویر کامل شامل tag (مثال: ghcr.io/org/repo/api:v1.2.3)"
+        required: true
+        type: string
+      namespace:
+        description: "Namespace مقصد"
+        required: false
+        default: production
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: canary-${{ github.event.inputs.namespace }}
+  cancel-in-progress: false
+
+jobs:
+  canary:
+    name: Progressive rollout
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      IMAGE: ${{ github.event.inputs.image }}
+      NAMESPACE: ${{ github.event.inputs.namespace }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Install Argo Rollouts kubectl plugin
+        run: |
+          curl -fsSL https://github.com/argoproj/argo-rollouts/releases/latest/download/kubectl-argo-rollouts-linux-amd64 \
+            -o /usr/local/bin/kubectl-argo-rollouts
+          chmod +x /usr/local/bin/kubectl-argo-rollouts
+
+      - name: Configure kubeconfig
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+        run: |
+          mkdir -p "$HOME/.kube"
+          printf '%s' "$KUBE_CONFIG" | base64 -d > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
+
+      - name: Error budget gate (قبل از شروع)
+        env:
+          PROMETHEUS_URL: ${{ vars.PROMETHEUS_URL }}
+          MAX_BURN_RATE: "0.75"
+        run: sh scripts/canary-gate.sh 'max(slo_burn_rate_30d)'
+
+      - name: Apply rollout manifest
+        run: |
+          sed "s|IMAGE_PLACEHOLDER|$IMAGE|g" infra/canary/rollout.yaml | kubectl apply -n "$NAMESPACE" -f -
+
+      - name: Promote 10% -> 25% -> 50% -> 100%
+        env:
+          PROMETHEUS_URL: ${{ vars.PROMETHEUS_URL }}
+        run: |
+          for step in 25 50 100; do
+            sleep 600  # 10 دقیقه مشاهده در هر مرحله
+            if ! sh scripts/canary-gate.sh 'max(slo_burn_rate_5m)' 2>/dev/null; then
+              echo "::error::canary failed at ${step}% — aborting"
+              kubectl argo rollouts abort rollout/nobatyar-api -n "$NAMESPACE"
+              exit 1
+            fi
+            kubectl argo rollouts promote rollout/nobatyar-api -n "$NAMESPACE"
+          done
+
+      - name: Verify rollout healthy
+        run: kubectl argo rollouts get rollout nobatyar-api -n "$NAMESPACE"

@@ -1,0 +1,8 @@
+/* چاپ نسخه (فاز ۸): فقط کارت‌های نسخه */
+@media print {
+  .header, .skip-link, .no-print, .toast-wrap { display: none !important; }
+  body { background: #fff !important; color: #000 !important; }
+  .card { box-shadow: none !important; border: 1px solid #999 !important; background: #fff !important; break-inside: avoid; }
+  .muted, .help { color: #333 !important; }
+  .rx-print { break-inside: avoid; page-break-inside: avoid; }
+}

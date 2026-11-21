@@ -1,0 +1,1231 @@
+// نوبتیار — اسکیمای فاز ۱
+// قواعد: ستون‌های *Enc = رمزنگاری‌شده‌ی سطح فیلد (AES-256-GCM، کلید در بلاب جاسازی شده).
+// قیدهای غیرقابل‌بیان در Prisma (EXCLUDE، RLS، Audit append-only) در prisma/sql/hardening.sql هستند.
+
+generator client {
+  provider        = "prisma-client-js"
+  /// span های Prisma برای OpenTelemetry (@prisma/instrumentation؛ در Prisma 5 preview است)
+  previewFeatures = ["tracing"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PATIENT
+  DOCTOR
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum AppointmentStatus {
+  PENDING_PAYMENT
+  PENDING_CONFIRMATION
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED_BY_PATIENT
+  CANCELLED_BY_DOCTOR
+  EXPIRED
+  NO_SHOW_PATIENT
+  NO_SHOW_DOCTOR
+}
+
+enum AppointmentKind {
+  IN_PERSON
+  VIDEO
+  CHAT
+}
+
+enum PaymentStatus {
+  INITIATED
+  PAID
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum PaymentGateway {
+  ZARINPAL
+  ZIBAL
+  IDPAY
+  SANDBOX // فقط dev/test؛ در production هرگز verify نمی‌شود (payment.config + settlement)
+}
+
+enum PaymentAttemptStatus {
+  INITIATED // لینک درگاه ساخته شده؛ نتیجه نامعلوم/در انتظار
+  VERIFIED // درگاه پرداخت را تأیید کرد (نهایی؛ تغییرناپذیر با تریگر)
+  FAILED // درگاه صریحاً ناموفق اعلام کرد
+  EXPIRED // مهلت گذشت و درگاه پرداختی گزارش نکرد
+  MISMATCH // ناهمخوانی مبلغ/سفارش ⇒ بررسی دستی (هرگز تأیید خودکار نمی‌شود)
+}
+
+enum RefundStatus {
+  PENDING // بدهی به بیمار؛ هنوز اجرا نشده (منتظر تأیید/اجرای ادمین)
+  PROCESSING // «claim» شده و درخواست در حال ارسال به درگاه (هم‌زمانی)
+  PROCESSED // انجام/ثبت‌شده نزد درگاه یا دستی توسط ادمین (نهایی)
+  FAILED // درگاه صریحاً رد کرد؛ پولی جابه‌جا نشده؛ ادمین می‌تواند دوباره اجرا کند
+  MANUAL // درگاه API استرداد ندارد/تنظیم نشده ⇒ ادمین از پنل درگاه انجام دهد و ثبت کند
+  REVIEW // پاسخ مبهم (timeout/۵xx) ⇒ ممکن است ثبت شده باشد؛ «هرگز» خودکار تکرار نمی‌شود؛ بررسی دستی
+}
+
+/// تأیید دو نفره‌ی استرداد (Maker/Checker) — src/payment/refund-approval-policy.ts
+enum RefundApprovalState {
+  NONE
+  REQUESTED
+  APPROVED
+  REJECTED
+}
+
+enum RefundApprovalAction {
+  EXECUTE
+  MARK_PROCESSED
+}
+
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ConsentType {
+  PRIVACY_POLICY
+  HEALTH_DATA_PROCESSING
+  TERMS
+  /// فاز ۱۹: رضایت صریح و جداگانه برای ضبط/پردازش Ambient AI Scribe (پزشک + بیمار)
+  AMBIENT_SCRIBE
+}
+
+// ───────────── هویت ─────────────
+
+model User {
+  id              String     @id @default(uuid()) @db.Uuid
+  phoneHash       String     @unique @map("phone_hash") // HMAC-SHA256 (blind index) برای جستجو/یکتایی
+  phoneEnc        Bytes      @map("phone_enc") // موبایل رمزنگاری‌شده (برای ارسال پیامک)
+  role            Role
+  status          UserStatus @default(ACTIVE)
+  /// فاز ۱۹ (MFA): سرویس TOTP رمزنگاری‌شده با AES-256-GCM (همان FieldCrypto)
+  mfaSecretEnc    Bytes?     @map("mfa_secret_enc")
+  mfaEnabledAt    DateTime?  @map("mfa_enabled_at") @db.Timestamptz
+  /// کدهای پشتیبان تکبارمصرف — فقط HMAC-SHA256 ی آنها (JSON آرایه هش) ذخیره می‌شود
+  mfaRecoveryHash String?    @map("mfa_recovery_hash")
+  mfaFailedCount  Int        @default(0) @map("mfa_failed_count")
+  mfaLockedUntil  DateTime?  @map("mfa_locked_until") @db.Timestamptz
+  createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime   @updatedAt @map("updated_at") @db.Timestamptz
+
+  patient             PatientProfile?
+  doctor              DoctorProfile?
+  sessions            Session[]
+  consents            Consent[]
+  pushSubscriptions   PushSubscription[]
+  notifications       Notification[]
+  scribeSessions      ScribeSession[]
+  dataRequests        DataRequest[]
+  webauthnCredentials WebAuthnCredential[]
+  wallet              WalletAccount?
+
+  @@map("users")
+}
+
+model Session {
+  id               String    @id @default(uuid()) @db.Uuid
+  userId           String    @map("user_id") @db.Uuid
+  refreshTokenHash String    @unique @map("refresh_token_hash")
+  familyId         String    @map("family_id") @db.Uuid // برای تشخیص reuse و ابطال خانواده‌ی توکن
+  userAgent        String?   @map("user_agent")
+  ipHash           String?   @map("ip_hash")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  expiresAt        DateTime  @map("expires_at") @db.Timestamptz
+  revokedAt        DateTime? @map("revoked_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@map("sessions")
+}
+
+model Consent {
+  id        String      @id @default(uuid()) @db.Uuid
+  userId    String      @map("user_id") @db.Uuid
+  type      ConsentType
+  version   String
+  grantedAt DateTime    @default(now()) @map("granted_at") @db.Timestamptz
+  revokedAt DateTime?   @map("revoked_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+  @@map("consents")
+}
+
+// ───────────── پروفایل‌ها (کلید = شناسه‌ی کاربر، برای سادگی RLS) ─────────────
+
+model PatientProfile {
+  userId       String   @id @map("user_id") @db.Uuid
+  fullName     String   @map("full_name")
+  birthDateEnc Bytes?   @map("birth_date_enc") // HEALTH/PERSONAL — رمزنگاری‌شده
+  gender       String?
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user              User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  appointments      Appointment[]
+  healthRecords     HealthRecord[]
+  triageSessions    TriageSession[]
+  conversations     Conversation[]
+  healthProfile     PatientHealthProfile?
+  soapNotes         SoapNote[]
+  visitSummaries    VisitSummary[]
+  prescriptions     Prescription[]
+  secondOpinions    SecondOpinion[]       @relation("SoPatient")
+  familyMembers     FamilyMember[]
+  vitalReadings     VitalReading[]
+  waitlistEntries   AppointmentWaitlist[]
+  scribeSessions    ScribeSession[]
+  insurancePolicies InsurancePolicy[]
+
+  @@map("patient_profiles")
+}
+
+model DoctorProfile {
+  userId                String   @id @map("user_id") @db.Uuid
+  fullName              String   @map("full_name")
+  medicalCouncilNo      String?  @unique @map("medical_council_no")
+  bio                   String?
+  consultationFeeRial   BigInt   @default(0) @map("consultation_fee_rial")
+  slotMinutes           Int      @default(20) @map("slot_minutes")
+  autoConfirm           Boolean  @default(false) @map("auto_confirm")
+  isListed              Boolean  @default(false) @map("is_listed") // فقط پس از تأیید مدارک
+  acceptsSecondOpinions Boolean  @default(false) @map("accepts_second_opinions") // فاز ۸: پزشک پذیرای درخواست نظر دوم
+  /// فاز ۱۹: مکان ویزیت حضوری (اطلاعات عمومی مطب — NOT HEALTH DATA)
+  clinicName            String?  @map("clinic_name")
+  clinicAddress         String?  @map("clinic_address")
+  clinicPhone           String?  @map("clinic_phone")
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user                   User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  specialties            DoctorSpecialty[]
+  availability           AvailabilityRule[]
+  timeOffs               TimeOff[]
+  verifications          DoctorVerification[]
+  appointments           Appointment[]
+  recordShares           RecordShare[]
+  conversations          Conversation[]
+  soapNotes              SoapNote[]
+  visitSummaries         VisitSummary[]
+  prescriptions          Prescription[]
+  secondOpinionsReceived SecondOpinion[]       @relation("SoTarget")
+  waitlistEntries        AppointmentWaitlist[]
+  scribeSessions         ScribeSession[]
+  payouts                Payout[]
+
+  @@index([isListed])
+  @@map("doctor_profiles")
+}
+
+model Specialty {
+  id     Int    @id @default(autoincrement())
+  slug   String @unique
+  nameFa String @map("name_fa")
+
+  doctors DoctorSpecialty[]
+
+  @@map("specialties")
+}
+
+model DoctorSpecialty {
+  doctorId    String @map("doctor_id") @db.Uuid
+  specialtyId Int    @map("specialty_id")
+
+  doctor    DoctorProfile @relation(fields: [doctorId], references: [userId], onDelete: Cascade)
+  specialty Specialty     @relation(fields: [specialtyId], references: [id], onDelete: Cascade)
+
+  @@id([doctorId, specialtyId])
+  @@map("doctor_specialties")
+}
+
+model DoctorVerification {
+  id          String             @id @default(uuid()) @db.Uuid
+  doctorId    String             @map("doctor_id") @db.Uuid
+  status      VerificationStatus @default(PENDING)
+  documentKey String             @map("document_key") // کلید شیء در MinIO (bucket خصوصی)
+  reviewedBy  String?            @map("reviewed_by") @db.Uuid
+  reviewedAt  DateTime?          @map("reviewed_at") @db.Timestamptz
+  note        String?
+  createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamptz
+
+  doctor DoctorProfile @relation(fields: [doctorId], references: [userId], onDelete: Cascade)
+
+  @@index([doctorId])
+  @@map("doctor_verifications")
+}
+
+// ───────────── زمان‌بندی ─────────────
+
+model AvailabilityRule {
+  id        String @id @default(uuid()) @db.Uuid
+  doctorId  String @map("doctor_id") @db.Uuid
+  weekday   Int // هفته‌ی ایرانی: 0=شنبه، 1=یکشنبه، … 6=جمعه
+  startTime String @map("start_time") // "HH:mm" به وقت Asia/Tehran
+  endTime   String @map("end_time")
+
+  doctor DoctorProfile @relation(fields: [doctorId], references: [userId], onDelete: Cascade)
+
+  @@index([doctorId, weekday])
+  @@map("availability_rules")
+}
+
+model TimeOff {
+  id       String   @id @default(uuid()) @db.Uuid
+  doctorId String   @map("doctor_id") @db.Uuid
+  startsAt DateTime @map("starts_at") @db.Timestamptz
+  endsAt   DateTime @map("ends_at") @db.Timestamptz
+  reason   String?
+
+  doctor DoctorProfile @relation(fields: [doctorId], references: [userId], onDelete: Cascade)
+
+  @@index([doctorId, startsAt])
+  @@map("time_offs")
+}
+
+// ───────────── نوبت و پرداخت ─────────────
+
+model Appointment {
+  id               String            @id @default(uuid()) @db.Uuid
+  doctorId         String            @map("doctor_id") @db.Uuid
+  patientId        String            @map("patient_id") @db.Uuid
+  startsAt         DateTime          @map("starts_at") @db.Timestamptz
+  endsAt           DateTime          @map("ends_at") @db.Timestamptz
+  status           AppointmentStatus @default(PENDING_PAYMENT)
+  kind             AppointmentKind   @default(VIDEO)
+  reasonEnc        Bytes?            @map("reason_enc") // HEALTH — رمزنگاری‌شده
+  priceRial        BigInt            @map("price_rial")
+  holdExpiresAt    DateTime?         @map("hold_expires_at") @db.Timestamptz
+  reminder24SentAt DateTime?         @map("reminder_24_sent_at") @db.Timestamptz
+  reminder1SentAt  DateTime?         @map("reminder_1_sent_at") @db.Timestamptz
+  /// فاز ۱۹: امتیاز ریسک غیبت (۰–۱۰۰) و زمان محاسبه؛ صرفاً برای یادآوری هدفمند (هیچ تصمیم بالینی)
+  noShowRisk       Int?              @map("no_show_risk")
+  riskScoredAt     DateTime?         @map("risk_scored_at") @db.Timestamptz
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime          @updatedAt @map("updated_at") @db.Timestamptz
+
+  doctor         DoctorProfile              @relation(fields: [doctorId], references: [userId])
+  patient        PatientProfile             @relation(fields: [patientId], references: [userId])
+  history        AppointmentStatusHistory[]
+  payment        Payment?
+  conversation   Conversation?
+  videoRoom      VideoRoom?
+  secondOpinions SecondOpinion[]
+  soapNote       SoapNote?
+  visitSummary   VisitSummary?
+  prescriptions  Prescription[]
+  scribeSession  ScribeSession?
+
+  @@index([doctorId, startsAt])
+  @@index([patientId, startsAt])
+  @@index([status, holdExpiresAt])
+  @@map("appointments")
+}
+
+model AppointmentStatusHistory {
+  id            BigInt             @id @default(autoincrement())
+  appointmentId String             @map("appointment_id") @db.Uuid
+  fromStatus    AppointmentStatus? @map("from_status")
+  toStatus      AppointmentStatus  @map("to_status")
+  actorId       String?            @map("actor_id") @db.Uuid
+  at            DateTime           @default(now()) @db.Timestamptz
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@index([appointmentId, at])
+  @@map("appointment_status_history")
+}
+
+model Payment {
+  id                  String          @id @default(uuid()) @db.Uuid
+  appointmentId       String          @unique @map("appointment_id") @db.Uuid
+  /// authority ی آخرین/پرداخت‌شده؛ منبع حقیقت «تلاش‌ها» (payment_attempts) است.
+  gatewayRef          String?         @map("gateway_ref")
+  /// درگاهی که پرداخت روی آن «تأیید» شده (پس از PAID)
+  gateway             PaymentGateway?
+  idempotencyKey      String          @unique @map("idempotency_key")
+  amountRial          BigInt          @map("amount_rial")
+  status              PaymentStatus   @default(INITIATED)
+  paidAt              DateTime?       @map("paid_at") @db.Timestamptz
+  /// وقتی نوبت با پرداخت هماهنگ شد (تأیید یا بازپرداخت خودکار)؛ null پس از PAID ⇒ job «ترمیم» دوباره امتحان می‌کند
+  appointmentSyncedAt DateTime?       @map("appointment_synced_at") @db.Timestamptz
+  createdAt           DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime        @updatedAt @map("updated_at") @db.Timestamptz
+
+  appointment Appointment      @relation(fields: [appointmentId], references: [id])
+  refunds     Refund[]
+  attempts    PaymentAttempt[]
+
+  @@index([gatewayRef])
+  @@index([status, appointmentSyncedAt])
+  @@map("payments")
+}
+
+/// هر بار «رفتن به درگاه» یک تلاش است (Payment تجمیع‌کننده). authority/trackId/id درگاه فقط اینجا معتبر است.
+model PaymentAttempt {
+  id            String               @id @default(uuid()) @db.Uuid // = orderId نزد درگاه (مبهم، بدون داده‌ی شخصی)
+  paymentId     String               @map("payment_id") @db.Uuid
+  gateway       PaymentGateway
+  authority     String
+  payUrl        String?              @map("pay_url")
+  amountRial    BigInt               @map("amount_rial")
+  status        PaymentAttemptStatus @default(INITIATED)
+  refId         String?              @map("ref_id")
+  cardPanMasked String?              @map("card_pan_masked") // فقط ****1234
+  feeRial       BigInt?              @map("fee_rial")
+  failureCode   String?              @map("failure_code")
+  checkCount    Int                  @default(0) @map("check_count")
+  lastCheckedAt DateTime?            @map("last_checked_at") @db.Timestamptz
+  verifiedAt    DateTime?            @map("verified_at") @db.Timestamptz
+  createdAt     DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime             @updatedAt @map("updated_at") @db.Timestamptz
+
+  payment Payment @relation(fields: [paymentId], references: [id])
+
+  @@unique([gateway, authority])
+  @@index([paymentId])
+  @@index([status, createdAt])
+  @@map("payment_attempts")
+}
+
+/// صفحه‌ی وضعیت عمومی: حوادث دستی (متن عمومی است؛ هیچ داده‌ی شخصی) — src/status
+enum IncidentStatus {
+  INVESTIGATING
+  IDENTIFIED
+  MONITORING
+  RESOLVED
+}
+
+enum IncidentImpact {
+  NONE
+  MINOR
+  MAJOR
+  CRITICAL
+}
+
+model StatusIncident {
+  id          String         @id @default(uuid()) @db.Uuid
+  titleFa     String         @map("title_fa")
+  status      IncidentStatus @default(INVESTIGATING)
+  impact      IncidentImpact
+  componentId String?        @map("component_id")
+  createdBy   String?        @map("created_by") @db.Uuid
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  resolvedAt  DateTime?      @map("resolved_at") @db.Timestamptz
+
+  updates StatusIncidentUpdate[]
+
+  @@index([createdAt])
+  @@map("status_incidents")
+}
+
+model StatusIncidentUpdate {
+  id         String         @id @default(uuid()) @db.Uuid
+  incidentId String         @map("incident_id") @db.Uuid
+  status     IncidentStatus
+  bodyFa     String         @map("body_fa")
+  authorId   String?        @map("author_id") @db.Uuid
+  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz
+
+  incident StatusIncident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  @@index([incidentId, createdAt])
+  @@map("status_incident_updates")
+}
+
+/// Outbox: رویداد دامنه در «همان تراکنشِ تغییر وضعیت» نوشته و بعداً توسط relay تحویل می‌شود (src/outbox).
+enum OutboxStatus {
+  PENDING
+  PROCESSED
+  DEAD
+}
+
+model OutboxEvent {
+  id            String       @id @default(uuid()) @db.Uuid
+  type          String
+  aggregateType String       @map("aggregate_type")
+  aggregateId   String       @map("aggregate_id")
+  /// فقط شناسه‌ها؛ هرگز داده‌ی سلامت/نام
+  payload       Json
+  status        OutboxStatus @default(PENDING)
+  attempts      Int          @default(0)
+  /// آماده‌ی تحویل از این زمان؛ هنگام claim «اجاره» و پس از شکست «backoff» می‌شود
+  availableAt   DateTime     @default(now()) @map("available_at") @db.Timestamptz
+  lastError     String?      @map("last_error")
+  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  processedAt   DateTime?    @map("processed_at") @db.Timestamptz
+
+  @@index([aggregateType, aggregateId])
+  @@map("outbox_events")
+}
+
+/// Idempotency-Key ی endpoint های مالی (src/idempotency). فقط نقش SYSTEM می‌خواند/می‌نویسد؛ پاسخ‌ها فقط داده‌ی مالی‌اند.
+enum IdempotencyState {
+  IN_PROGRESS
+  COMPLETED
+}
+
+model IdempotencyKey {
+  id          String           @id @default(uuid()) @db.Uuid
+  /// «<userId>:<METHOD> <route-template>»
+  scope       String
+  key         String
+  /// sha256(method + url + canonical body)
+  fingerprint String
+  state       IdempotencyState @default(IN_PROGRESS)
+  lockedUntil DateTime         @map("locked_until") @db.Timestamptz
+  statusCode  Int?             @map("status_code")
+  response    Json?
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  completedAt DateTime?        @map("completed_at") @db.Timestamptz
+  expiresAt   DateTime         @map("expires_at") @db.Timestamptz
+
+  @@unique([scope, key])
+  @@index([expiresAt])
+  @@map("idempotency_keys")
+}
+
+model Refund {
+  id             String                @id @default(uuid()) @db.Uuid
+  paymentId      String                @map("payment_id") @db.Uuid
+  amountRial     BigInt                @map("amount_rial")
+  reason         String?
+  status         RefundStatus          @default(PENDING)
+  /// تلاشِ تأییدشده‌ای که پول را گرفته (پرداخت تکراری ⇒ تلاش دوم)؛ null ⇒ تلاش تأییدشده‌ی خودِ Payment
+  attemptId      String?               @map("attempt_id") @db.Uuid
+  gateway        PaymentGateway?
+  /// شناسه‌ی استرداد نزد درگاه یا مرجع بانکی ثبت‌شده‌ی ادمین
+  externalRef    String?               @map("external_ref")
+  tryCount       Int                   @default(0) @map("try_count")
+  lastErrorCode  String?               @map("last_error_code")
+  claimedAt      DateTime?             @map("claimed_at") @db.Timestamptz
+  processedAt    DateTime?             @map("processed_at") @db.Timestamptz
+  processedBy    String?               @map("processed_by") @db.Uuid
+  note           String?
+  /// Maker/Checker: تأیید «یک‌بارمصرف» برای یک اقدام؛ checker ≠ maker با CHECK ی DB اجبار می‌شود
+  approvalState  RefundApprovalState   @default(NONE) @map("approval_state")
+  approvalAction RefundApprovalAction? @map("approval_action")
+  /// مرجع بانکی تأییدشده برای MARK_PROCESSED (اجرا فقط با «همین» مرجع مجاز است)
+  approvalRef    String?               @map("approval_ref")
+  makerId        String?               @map("maker_id") @db.Uuid
+  makerNote      String?               @map("maker_note")
+  requestedAt    DateTime?             @map("requested_at") @db.Timestamptz
+  checkerId      String?               @map("checker_id") @db.Uuid
+  checkerNote    String?               @map("checker_note")
+  decidedAt      DateTime?             @map("decided_at") @db.Timestamptz
+  createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  payment Payment @relation(fields: [paymentId], references: [id])
+
+  @@index([paymentId])
+  @@index([status, createdAt])
+  @@map("refunds")
+}
+
+// ───────────── پرونده‌ی سلامت و ارتباطات (HEALTH) ─────────────
+
+model HealthRecord {
+  id         String         @id @default(uuid()) @db.Uuid
+  patientId  String         @map("patient_id") @db.Uuid
+  title      String
+  contentEnc Bytes          @map("content_enc")
+  category   RecordCategory @default(NOTE)
+  visitDate  DateTime?      @map("visit_date") @db.Date
+  tags       String[]       @default([])
+  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+
+  patient     PatientProfile     @relation(fields: [patientId], references: [userId])
+  attachments RecordAttachment[]
+  shares      RecordShare[]
+
+  @@index([patientId])
+  @@map("health_records")
+}
+
+model RecordAttachment {
+  id        String   @id @default(uuid()) @db.Uuid
+  recordId  String   @map("record_id") @db.Uuid
+  objectKey String   @map("object_key")
+  fileName  String   @map("file_name")
+  mimeType  String   @map("mime_type")
+  sizeBytes Int      @map("size_bytes")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  record HealthRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+
+  @@index([recordId])
+  @@map("record_attachments")
+}
+
+model RecordShare {
+  id        String    @id @default(uuid()) @db.Uuid
+  recordId  String    @map("record_id") @db.Uuid
+  doctorId  String    @map("doctor_id") @db.Uuid
+  grantedAt DateTime  @default(now()) @map("granted_at") @db.Timestamptz
+  expiresAt DateTime? @map("expires_at") @db.Timestamptz
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz
+
+  record HealthRecord  @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  doctor DoctorProfile @relation(fields: [doctorId], references: [userId], onDelete: Cascade)
+
+  @@unique([recordId, doctorId])
+  @@index([doctorId])
+  @@map("record_shares")
+}
+
+model Conversation {
+  id            String   @id @default(uuid()) @db.Uuid
+  appointmentId String   @unique @map("appointment_id") @db.Uuid
+  patientId     String   @map("patient_id") @db.Uuid
+  doctorId      String   @map("doctor_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  appointment Appointment    @relation(fields: [appointmentId], references: [id])
+  patient     PatientProfile @relation(fields: [patientId], references: [userId])
+  doctor      DoctorProfile  @relation(fields: [doctorId], references: [userId])
+  messages    Message[]
+
+  @@map("conversations")
+}
+
+model Message {
+  id              BigInt      @id @default(autoincrement())
+  conversationId  String      @map("conversation_id") @db.Uuid
+  senderId        String      @map("sender_id") @db.Uuid
+  bodyEnc         Bytes       @map("body_enc")
+  kind            MessageKind @default(TEXT)
+  attachmentKey   String?     @map("attachment_key") // MinIO object key
+  attachmentName  String?     @map("attachment_name") // نام اصلی فایل
+  attachmentMime  String?     @map("attachment_mime")
+  attachmentBytes Int?        @map("attachment_bytes")
+  readAt          DateTime?   @map("read_at") @db.Timestamptz
+  editedAt        DateTime?   @map("edited_at") @db.Timestamptz
+  deletedAt       DateTime?   @map("deleted_at") @db.Timestamptz
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
+}
+
+enum MessageKind {
+  TEXT
+  FILE
+  IMAGE
+  SYSTEM
+}
+
+model TriageSession {
+  id            String   @id @default(uuid()) @db.Uuid
+  patientId     String   @map("patient_id") @db.Uuid
+  answersEnc    Bytes    @map("answers_enc")
+  resultEnc     Bytes?   @map("result_enc")
+  engineVersion String   @default("rules-1.0.0") @map("engine_version") // نسخه‌ی قواعد (غیرحساس)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  patient PatientProfile @relation(fields: [patientId], references: [userId])
+
+  @@index([patientId, createdAt])
+  @@map("triage_sessions")
+}
+
+/// نظر دوم (فاز ۸). appointmentId = نوبت «مبدأ» (COMPLETED) که بیمار دربارهٔ آن نظر دیگری می‌خواهد.
+/// request/response رمزنگاری‌شده‌اند؛ پزشک نظر‌دهنده هویت بیمار را نمی‌بیند.
+model SecondOpinion {
+  id                  String              @id @default(uuid()) @db.Uuid
+  appointmentId       String              @map("appointment_id") @db.Uuid
+  patientId           String              @map("patient_id") @db.Uuid
+  doctorId            String              @map("doctor_id") @db.Uuid
+  status              SecondOpinionStatus @default(REQUESTED)
+  requestEnc          Bytes               @map("request_enc")
+  responseEnc         Bytes?              @map("response_enc")
+  includeVisitSummary Boolean             @default(false) @map("include_visit_summary")
+  sharedRecordIds     String[]            @default([]) @map("shared_record_ids") @db.Uuid
+  acceptDeadlineAt    DateTime            @map("accept_deadline_at") @db.Timestamptz
+  answerDeadlineAt    DateTime?           @map("answer_deadline_at") @db.Timestamptz
+  sharesExpireAt      DateTime            @map("shares_expire_at") @db.Timestamptz
+  respondedAt         DateTime?           @map("responded_at") @db.Timestamptz
+  createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime            @updatedAt @map("updated_at") @db.Timestamptz
+
+  appointment Appointment    @relation(fields: [appointmentId], references: [id])
+  patient     PatientProfile @relation("SoPatient", fields: [patientId], references: [userId])
+  doctor      DoctorProfile  @relation("SoTarget", fields: [doctorId], references: [userId])
+
+  @@index([patientId, status])
+  @@index([doctorId, status])
+  @@index([appointmentId])
+  @@index([status, acceptDeadlineAt])
+  @@map("second_opinions")
+}
+
+enum SecondOpinionStatus {
+  REQUESTED
+  ACCEPTED
+  DECLINED
+  ANSWERED
+  EXPIRED
+  CANCELLED
+}
+
+// ───────────── فاز ۸: پروفایل سلامت، SOAP، نسخه ─────────────
+
+/// حساسیت‌ها/بیماری‌های زمینه‌ای/داروها — JSON رمزنگاری‌شده (HEALTH).
+model PatientHealthProfile {
+  patientId String   @id @map("patient_id") @db.Uuid
+  dataEnc   Bytes    @map("data_enc")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  patient PatientProfile @relation(fields: [patientId], references: [userId], onDelete: Cascade)
+
+  @@map("patient_health_profiles")
+}
+
+enum SoapStatus {
+  DRAFT
+  SIGNED
+}
+
+/// یادداشت SOAP — فقط پزشک (RLS). پس از امضا تغییرناپذیر (تریگر). بیمار فقط VisitSummary را می‌بیند.
+model SoapNote {
+  id                String     @id @default(uuid()) @db.Uuid
+  appointmentId     String     @unique @map("appointment_id") @db.Uuid
+  doctorId          String     @map("doctor_id") @db.Uuid
+  patientId         String     @map("patient_id") @db.Uuid
+  status            SoapStatus @default(DRAFT)
+  contentEnc        Bytes      @map("content_enc")
+  patientSummaryEnc Bytes?     @map("patient_summary_enc") // پیش‌نویس خلاصه‌ی بیمار (فقط پزشک)
+  version           Int        @default(1)
+  signedAt          DateTime?  @map("signed_at") @db.Timestamptz
+  createdAt         DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime   @updatedAt @map("updated_at") @db.Timestamptz
+
+  appointment Appointment    @relation(fields: [appointmentId], references: [id])
+  doctor      DoctorProfile  @relation(fields: [doctorId], references: [userId])
+  patient     PatientProfile @relation(fields: [patientId], references: [userId])
+  addenda     SoapAddendum[]
+
+  @@index([doctorId, createdAt])
+  @@index([patientId])
+  @@map("soap_notes")
+}
+
+/// الحاقیه‌ی append-only بعد از امضا.
+model SoapAddendum {
+  id        String   @id @default(uuid()) @db.Uuid
+  noteId    String   @map("note_id") @db.Uuid
+  doctorId  String   @map("doctor_id") @db.Uuid
+  bodyEnc   Bytes    @map("body_enc")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  note SoapNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@index([noteId, createdAt])
+  @@map("soap_addenda")
+}
+
+/// «خلاصه‌ی ویزیت برای بیمار» — نسخه‌ی منتشرشده هنگام امضای SOAP؛ تغییرناپذیر. جدا از SoapNote تا RLS ستون‌ها را تفکیک کند.
+model VisitSummary {
+  id            String   @id @default(uuid()) @db.Uuid
+  appointmentId String   @unique @map("appointment_id") @db.Uuid
+  doctorId      String   @map("doctor_id") @db.Uuid
+  patientId     String   @map("patient_id") @db.Uuid
+  summaryEnc    Bytes    @map("summary_enc") // JSON: { text, followUpDays }
+  publishedAt   DateTime @default(now()) @map("published_at") @db.Timestamptz
+
+  appointment Appointment    @relation(fields: [appointmentId], references: [id])
+  doctor      DoctorProfile  @relation(fields: [doctorId], references: [userId])
+  patient     PatientProfile @relation(fields: [patientId], references: [userId])
+
+  @@index([patientId, publishedAt])
+  @@map("visit_summaries")
+}
+
+enum PrescriptionStatus {
+  ISSUED
+  CANCELLED
+}
+
+/// نسخه — اقلام رمزنگاری‌شده و تغییرناپذیر؛ اصلاح = ابطال + صدور مجدد.
+model Prescription {
+  id                   String             @id @default(uuid()) @db.Uuid
+  number               String             @unique // NV-XXXX-XXXX
+  appointmentId        String             @map("appointment_id") @db.Uuid
+  doctorId             String             @map("doctor_id") @db.Uuid
+  patientId            String             @map("patient_id") @db.Uuid
+  itemsEnc             Bytes              @map("items_enc")
+  status               PrescriptionStatus @default(ISSUED)
+  issuedAt             DateTime           @default(now()) @map("issued_at") @db.Timestamptz
+  validUntil           DateTime           @map("valid_until") @db.Timestamptz
+  cancelledAt          DateTime?          @map("cancelled_at") @db.Timestamptz
+  cancelReasonEnc      Bytes?             @map("cancel_reason_enc")
+  warningsAcknowledged Boolean            @default(false) @map("warnings_acknowledged")
+
+  appointment Appointment    @relation(fields: [appointmentId], references: [id])
+  doctor      DoctorProfile  @relation(fields: [doctorId], references: [userId])
+  patient     PatientProfile @relation(fields: [patientId], references: [userId])
+
+  @@index([patientId, issuedAt])
+  @@index([doctorId, issuedAt])
+  @@index([appointmentId])
+  @@map("prescriptions")
+}
+
+model VideoRoom {
+  id                 String    @id @default(uuid()) @db.Uuid
+  appointmentId      String    @unique @map("appointment_id") @db.Uuid
+  roomName           String    @unique @map("room_name")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  doctorFirstJoinAt  DateTime? @map("doctor_first_join_at") @db.Timestamptz
+  patientFirstJoinAt DateTime? @map("patient_first_join_at") @db.Timestamptz
+  closedAt           DateTime? @map("closed_at") @db.Timestamptz // پایان «ویزیت» (نه خالی‌شدن اتاق)
+
+  appointment Appointment  @relation(fields: [appointmentId], references: [id])
+  events      VideoEvent[]
+
+  @@map("video_rooms")
+}
+
+/// رویدادهای webhook ی LiveKit — append-only (شواهد حضور برای اختلاف/غیبت). بدون هیچ داده‌ی سلامت.
+model VideoEvent {
+  id        BigInt         @id @default(autoincrement())
+  eventId   String         @unique @map("event_id") // شناسه‌ی رویداد LiveKit؛ ضد دوباره‌پردازی
+  roomId    String         @map("room_id") @db.Uuid
+  kind      VideoEventKind
+  role      String? // "doctor" | "patient"
+  at        DateTime       @db.Timestamptz
+  createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz
+
+  room VideoRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([roomId, at])
+  @@map("video_events")
+}
+
+enum VideoEventKind {
+  ROOM_STARTED
+  PARTICIPANT_JOINED
+  PARTICIPANT_LEFT
+  ROOM_FINISHED
+}
+
+// ───────────── ممیزی (append-only، زنجیره‌ی هش با trigger) ─────────────
+
+model AuditLog {
+  id         BigInt   @id @default(autoincrement())
+  seq        BigInt?  @unique // ترتیب زنجیره (توسط trigger مقدار می‌گیرد)
+  actorId    String?  @map("actor_id") @db.Uuid
+  actorRole  String?  @map("actor_role")
+  action     String
+  objectType String   @map("object_type")
+  objectId   String?  @map("object_id")
+  meta       Json? // هرگز داده‌ی HEALTH نگذارید
+  at         DateTime @default(now()) @db.Timestamptz
+  prevHash   String?  @map("prev_hash")
+  hash       String?
+
+  @@index([actorId, at])
+  @@index([objectType, objectId])
+  @@map("audit_logs")
+}
+
+// سطر تکی head زنجیره‌ی Audit (فقط توسط trigger بروز می‌شود؛ نقش اپ به آن دسترسی ندارد)
+model AuditChainHead {
+  id      Int     @id @db.SmallInt
+  lastSeq BigInt  @default(0) @map("last_seq")
+  hash    String?
+
+  @@map("audit_chain_head")
+}
+
+// نمای عمومی «ساعت‌های اشغال» — بدون هیچ اطلاعات بیمار؛ فقط توسط trigger بروز می‌شود (hardening: phase3.sql)
+model AppointmentBusy {
+  appointmentId String   @id @map("appointment_id") @db.Uuid
+  doctorId      String   @map("doctor_id") @db.Uuid
+  startsAt      DateTime @map("starts_at") @db.Timestamptz
+  endsAt        DateTime @map("ends_at") @db.Timestamptz
+
+  @@index([doctorId, startsAt])
+  @@map("appointment_busy")
+}
+
+// ───────────── فاز ۵: اعضای خانواده ─────────────
+model FamilyMember {
+  id         String   @id @default(uuid()) @db.Uuid
+  ownerId    String   @map("owner_id") @db.Uuid
+  fullName   String   @map("full_name")
+  nationalId Bytes?   @map("national_id") // AES-256
+  birthYear  Int?     @map("birth_year")
+  relation   String // فرزند، والد، همسر، ...
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  owner PatientProfile @relation(fields: [ownerId], references: [userId], onDelete: Cascade)
+
+  @@index([ownerId])
+  @@map("family_members")
+}
+
+// ───────────── فاز ۵: اعلان‌ها ─────────────
+model Notification {
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  kind      NotificationKind
+  titleFa   String           @map("title_fa")
+  bodyFa    String           @map("body_fa")
+  payload   Json?
+  readAt    DateTime?        @map("read_at") @db.Timestamptz
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+enum NotificationKind {
+  APPOINTMENT_REMINDER
+  APPOINTMENT_CONFIRMED
+  APPOINTMENT_CANCELLED
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
+  SECOND_OPINION_READY
+  SECOND_OPINION_REQUESTED
+  SECOND_OPINION_ACCEPTED
+  SECOND_OPINION_DECLINED
+  VISIT_SUMMARY_READY
+  PRESCRIPTION_ISSUED
+  PRESCRIPTION_CANCELLED
+  VIDEO_ROOM_READY
+  /// فاز ۱۹
+  APPOINTMENT_RESCHEDULED
+  VITAL_ALERT
+  SCRIBE_DRAFT_READY
+  WAITLIST_OFFER
+  DATA_REQUEST_READY
+  SYSTEM
+}
+
+enum RecordCategory {
+  NOTE
+  LAB_RESULT
+  IMAGING
+  PRESCRIPTION
+  DISCHARGE_SUMMARY
+  REFERRAL
+  VACCINATION
+  OTHER
+}
+
+/// اشتراک Web Push (یادآوری نوبت). endpoint و کلیدها «capability URL/راز» هستند ⇒ رمزنگاری با FieldCrypto؛
+/// فقط hash ی endpoint (blind index) برای یکتایی نگه‌داری می‌شود.
+model PushSubscription {
+  id            String    @id @default(uuid()) @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  endpointHash  String    @unique @map("endpoint_hash")
+  endpointEnc   Bytes     @map("endpoint_enc")
+  p256dhEnc     Bytes     @map("p256dh_enc")
+  authEnc       Bytes     @map("auth_enc")
+  failureCount  Int       @default(0) @map("failure_count")
+  lastSuccessAt DateTime? @map("last_success_at") @db.Timestamptz
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
+}
+
+// ════════════════════════ فاز ۱۹ ════════════════════════
+
+/// فاز ۱۹٫۱: پایش از راه دور (RPM). مقادیر عددی «غیرحساس»اند؛ متن یادداشت رمزنگاری می‌شود.
+enum VitalType {
+  BLOOD_PRESSURE
+  BLOOD_GLUCOSE
+  WEIGHT
+  HEART_RATE
+  BODY_TEMPERATURE
+  OXYGEN_SATURATION
+}
+
+enum VitalSource {
+  MANUAL
+  DEVICE
+}
+
+model VitalReading {
+  id             String      @id @default(uuid()) @db.Uuid
+  patientId      String      @map("patient_id") @db.Uuid
+  type           VitalType
+  /// فشارخون: systolic؛ قند: mg/dL؛ وزن: kg؛ ضربان: bpm؛ دما: °C؛ اکسیژن: %
+  valuePrimary   Float       @map("value_primary")
+  /// فشارخون: diastolic؛ سایر انواع: null
+  valueSecondary Float?      @map("value_secondary")
+  unit           String
+  measuredAt     DateTime    @map("measured_at") @db.Timestamptz
+  source         VitalSource @default(MANUAL)
+  noteEnc        Bytes?      @map("note_enc") // HEALTH
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz
+
+  patient PatientProfile @relation(fields: [patientId], references: [userId], onDelete: Cascade)
+
+  @@index([patientId, type, measuredAt])
+  @@map("vital_readings")
+}
+
+/// فاز ۱۹٫۱: لیست انتظار نوبت — پر شدن خودکار جای خالی پس از لغو/جابهجایی.
+enum WaitlistStatus {
+  WAITING
+  NOTIFIED
+  FULFILLED
+  CANCELLED
+  EXPIRED
+}
+
+model AppointmentWaitlist {
+  id          String          @id @default(uuid()) @db.Uuid
+  doctorId    String          @map("doctor_id") @db.Uuid
+  patientId   String          @map("patient_id") @db.Uuid
+  kind        AppointmentKind @default(VIDEO)
+  /// بازه‌ی زمانی مطلوب (به وقت تهران، ذخیره‌شده به UTC)
+  desiredFrom DateTime        @map("desired_from") @db.Timestamptz
+  desiredTo   DateTime        @map("desired_to") @db.Timestamptz
+  status      WaitlistStatus  @default(WAITING)
+  notifiedAt  DateTime?       @map("notified_at") @db.Timestamptz
+  expiresAt   DateTime        @map("expires_at") @db.Timestamptz
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz
+
+  doctor  DoctorProfile  @relation(fields: [doctorId], references: [userId], onDelete: Cascade)
+  patient PatientProfile @relation(fields: [patientId], references: [userId], onDelete: Cascade)
+
+  @@index([doctorId, status, desiredFrom])
+  @@index([patientId, status])
+  @@map("appointment_waitlist")
+}
+
+/// فاز ۱۹٫۲: Ambient AI Scribe — رضایت صریح دوطرفه، متن موقت رمزنگاری‌شده، پیشنویس قابل بازبینی.
+enum ScribeStatus {
+  CONSENTED
+  TRANSCRIPT_READY
+  DRAFT_GENERATED
+  DISCARDED
+  EXPIRED
+}
+
+model ScribeSession {
+  id               String       @id @default(uuid()) @db.Uuid
+  appointmentId    String       @unique @map("appointment_id") @db.Uuid
+  doctorId         String       @map("doctor_id") @db.Uuid
+  patientId        String       @map("patient_id") @db.Uuid
+  status           ScribeStatus @default(CONSENTED)
+  /// رضایت صریح ثبتشده (از جدول consents، نوع AMBIENT_SCRIBE)
+  doctorConsentAt  DateTime     @map("doctor_consent_at") @db.Timestamptz
+  patientConsentAt DateTime     @map("patient_consent_at") @db.Timestamptz
+  /// متن موقت؛ پس از TTL توسط job حذف می‌شود (هیچ فایل صوتی در این جدول ذخیره نمی‌شود)
+  transcriptEnc    Bytes?       @map("transcript_enc")
+  draftEnc         Bytes?       @map("draft_enc")
+  model            String       @default("local-rules-1")
+  expiresAt        DateTime     @map("expires_at") @db.Timestamptz
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+
+  appointment Appointment    @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  doctor      DoctorProfile  @relation(fields: [doctorId], references: [userId])
+  patient     PatientProfile @relation(fields: [patientId], references: [userId])
+  User        User?          @relation(fields: [userId], references: [id])
+  userId      String?        @db.Uuid
+
+  @@index([doctorId, createdAt])
+  @@index([status, expiresAt])
+  @@map("scribe_sessions")
+}
+
+/// فاز ۱۹٫۳: درخواست بیمار برای خروجی/حذف داده (حق حذف و قابلیت حمل).
+enum DataRequestType {
+  EXPORT
+  DELETE
+}
+
+enum DataRequestStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  REJECTED
+}
+
+model DataRequest {
+  id          String            @id @default(uuid()) @db.Uuid
+  userId      String            @map("user_id") @db.Uuid
+  type        DataRequestType
+  status      DataRequestStatus @default(PENDING)
+  /// فقط یک لینک موقت به شیء خروجی (بدون دادهٔ سلامت در این ستون)
+  objectKey   String?           @map("object_key")
+  note        String?
+  /// A6: اجرا پس از دو تأیید مستقل و سپس دورهٔ grace ۳۰ روزه
+  executeAt   DateTime?         @map("execute_at") @db.Timestamptz
+  requestedAt DateTime          @default(now()) @map("requested_at") @db.Timestamptz
+  completedAt DateTime?         @map("completed_at") @db.Timestamptz
+
+  user    User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviews DataRequestReview[]
+
+  @@index([userId, requestedAt])
+  @@index([status, requestedAt])
+  @@map("data_requests")
+}
+
+/// A6: تأیید دو نفره (Maker/Checker جداگانه) — هر ادمین فقط یک رأی دارد.
+model DataRequestReview {
+  id        String   @id @default(uuid()) @db.Uuid
+  requestId String   @map("request_id") @db.Uuid
+  adminId   String   @map("admin_id") @db.Uuid
+  decision  String   @db.VarChar(16)
+  note      String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  request DataRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@unique([requestId, adminId])
+  @@index([requestId])
+  @@map("data_request_reviews")
+}
+
+// ───────────────────────── فاز ۲۴: Passkey، Ledger، بیمه و Payout ─────────────────────────
+
+/// اعتبارنامه WebAuthn (Passkey). کلید عمومی هرگز به کلاینت برنمی‌گردد.
+model WebAuthnCredential {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  credentialId String    @unique @map("credential_id")
+  publicKey    Bytes     @map("public_key")
+  counter      BigInt    @default(0)
+  transports   String?
+  deviceType   String?   @map("device_type")
+  backedUp     Boolean   @default(false) @map("backed_up")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  lastUsedAt   DateTime? @map("last_used_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("webauthn_credentials")
+}
+
+enum LedgerDirection {
+  DEBIT
+  CREDIT
+}
+
+enum LedgerTxKind {
+  TOPUP
+  PAYMENT
+  REFUND
+  PAYOUT
+  INSURANCE_SETTLEMENT
+  ADJUSTMENT
+}
+
+enum PayoutStatus {
+  REQUESTED
+  APPROVED
+  PAID
+  REJECTED
+}
+
+/// کیف پول ریالی هر کاربر یا حساب سیستمی (تسویه/درآمد). منبع حقیقت ledger_entries است.
+model WalletAccount {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String?  @unique @map("user_id") @db.Uuid
+  /// کد حساب‌های سیستمی مانند GATEWAY_CLEARING / PLATFORM_REVENUE
+  code        String?  @unique @db.VarChar(40)
+  currency    String   @default("IRR") @db.VarChar(3)
+  balanceRial BigInt   @default(0) @map("balance_rial")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  user    User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entries LedgerEntry[]
+
+  @@map("wallet_accounts")
+}
+
+/// تراکنش دفتر کل: هر تراکنش باید مجموع بدهکار = مجموع بستانکار داشته باشد (trigger).
+model LedgerTransaction {
+  id             String       @id @default(uuid()) @db.Uuid
+  kind           LedgerTxKind
+  referenceType  String?      @map("reference_type")
+  referenceId    String?      @map("reference_id")
+  idempotencyKey String       @unique @map("idempotency_key")
+  description    String?
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  entries LedgerEntry[]
+
+  @@index([kind, createdAt])
+  @@index([referenceType, referenceId])
+  @@map("ledger_transactions")
+}
+
+model LedgerEntry {
+  id            BigInt          @id @default(autoincrement())
+  transactionId String          @map("transaction_id") @db.Uuid
+  accountId     String          @map("account_id") @db.Uuid
+  direction     LedgerDirection
+  amountRial    BigInt          @map("amount_rial")
+  createdAt     DateTime        @default(now()) @map("created_at") @db.Timestamptz
+
+  transaction LedgerTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  account     WalletAccount     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, createdAt])
+  @@index([transactionId])
+  @@map("ledger_entries")
+}
+
+/// درخواست تسویه پزشک؛ پرداخت واقعی خارج از سیستم انجام و وضعیت ثبت می‌شود.
+model Payout {
+  id          String       @id @default(uuid()) @db.Uuid
+  doctorId    String       @map("doctor_id") @db.Uuid
+  amountRial  BigInt       @map("amount_rial")
+  status      PayoutStatus @default(REQUESTED)
+  note        String?
+  requestedAt DateTime     @default(now()) @map("requested_at") @db.Timestamptz
+  processedAt DateTime?    @map("processed_at") @db.Timestamptz
+
+  doctor DoctorProfile @relation(fields: [doctorId], references: [userId], onDelete: Cascade)
+
+  @@index([doctorId, requestedAt])
+  @@index([status, requestedAt])
+  @@map("payouts")
+}
+
+/// بیمه پایه بیمار؛ شماره بیمه رمزنگاری‌شده ذخیره می‌شود.
+model InsurancePolicy {
+  id              String    @id @default(uuid()) @db.Uuid
+  patientId       String    @map("patient_id") @db.Uuid
+  insurer         String
+  policyNumberEnc Bytes?    @map("policy_number_enc")
+  coveragePercent Int       @default(0) @map("coverage_percent")
+  validUntil      DateTime? @map("valid_until") @db.Timestamptz
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  patient PatientProfile @relation(fields: [patientId], references: [userId], onDelete: Cascade)
+
+  @@index([patientId])
+  @@map("insurance_policies")
+}

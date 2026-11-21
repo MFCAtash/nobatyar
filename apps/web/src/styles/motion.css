@@ -1,0 +1,8 @@
+/* کاهش حرکت برای کاربرانی که ترجیح داده‌اند */
+@media (prefers-reduced-motion: reduce) { * { animation-duration: .01s !important; transition: none !important; } html { scroll-behavior: auto; } }
+
+/* انیمیشن نقطه‌های «در حال نوشتن» چت (قبلاً <style> درون page.tsx) */
+@keyframes bounce {
+  0%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-6px); }
+}

@@ -1,0 +1,42 @@
+/* فاز ۲۲ — لوگوی نستعلیق/ECG، هاله نور رنگی و پسزمینه شبانه */
+@layer components {
+  /* لوگو */
+  .brand-wrap { display: inline-flex; align-items: center; gap: 10px; }
+  .brand-mark { position: relative; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 14px; background: color-mix(in srgb, var(--teal) 12%, transparent); box-shadow: 0 0 24px var(--teal-glow), inset 0 0 12px color-mix(in srgb, var(--teal) 10%, transparent); }
+  .brand-mark::after { content: ""; position: absolute; inset: -8px; border-radius: 50%; background: var(--teal-glow); filter: blur(18px); z-index: -1; }
+  .brand-ring { stroke: var(--teal); stroke-width: 1.6; opacity: .85; fill: none; }
+  .brand-ecg { stroke: var(--teal); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 3px var(--teal-glow)); }
+  .brand-cross { stroke: var(--blue); stroke-width: 2; stroke-linecap: round; }
+  .brand-name {
+    font-family: "Noto Nastaliq Urdu Variable", "Noto Nastaliq Urdu", serif;
+    font-size: 1.45rem; font-weight: 700; line-height: 1;
+    color: var(--ink); text-shadow: 0 0 18px var(--teal-glow);
+    -webkit-text-fill-color: var(--ink);
+  }
+  .brand-compact .brand-name { font-size: 1.15rem; }
+
+  /* پسزمینه شبانه با هاله نور رنگی (تمهای تیرهٔ اصلی) */
+  [data-theme="clinical-dark"] body,
+  [data-theme="emerald-night"] body,
+  [data-theme="violet-clinic"] body,
+  [data-theme="graphite-med"] body,
+  [data-theme="indigo-ward"] body,
+  [data-theme="midnight-blue"] body,
+  [data-theme="amber-oncall"] body {
+    background-image:
+      radial-gradient(760px 420px at 88% -8%, var(--teal-glow), transparent 62%),
+      radial-gradient(620px 360px at -6% 12%, color-mix(in srgb, var(--blue) 14%, transparent), transparent 60%),
+      radial-gradient(520px 320px at 50% 100%, color-mix(in srgb, var(--purple) 10%, transparent), transparent 65%);
+  }
+
+  /* هاله نور روی کارتها و دکمهها */
+  .glow-card { position: relative; box-shadow: 0 22px 60px rgba(0,0,0,.25), 0 0 44px var(--teal-glow); }
+  .glow-card::before { content: ""; position: absolute; inset-inline-end: -20px; inset-block-start: -24px; width: 140px; height: 140px; border-radius: 50%; background: var(--teal-glow); filter: blur(42px); z-index: -1; pointer-events: none; }
+  .glow-accent { box-shadow: 0 0 0 2px var(--teal-glow), 0 12px 36px var(--teal-glow); }
+  [data-theme="low-bandwidth"] .glow-card::before,
+  [data-theme="low-bandwidth"] .brand-mark::after { display: none; }
+
+  /* Stepper رزرو — هاله مرحله فعلی */
+  .stepper .step[data-state="current"] .step-dot { box-shadow: 0 0 0 4px var(--teal-glow), 0 0 18px var(--teal-glow); }
+  .stepper .step[data-state="done"] .step-dot { box-shadow: 0 0 14px var(--teal-glow); }
+}

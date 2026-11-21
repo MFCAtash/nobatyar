@@ -1,0 +1,62 @@
+# فاز ۱۹ — SLO و هشدار burn-rate (Google SRE workbook).
+# SLO ی دسترسپذیری: ۹۹٫۹٪ در ۳۰ روز ⇒ error budget = ۰٫۱٪.
+# پنجرههای چندگانه: ۱س/۵دقیقه (سریع)، ۶س/۳۰دقیقه (آهسته)، ۳د/۶ساعت (پنهانی).
+groups:
+  - name: slo-burn-rate
+    rules:
+      - alert: SLOBurnRateFast
+        expr: |
+          (
+            sum(rate(nobatyar_http_requests_total{status=~"5.."}[1h]))
+            / clamp_min(sum(rate(nobatyar_http_requests_total[1h])), 0.001)
+          ) > (14.4 * 0.001)
+          and
+          (
+            sum(rate(nobatyar_http_requests_total{status=~"5.."}[5m]))
+            / clamp_min(sum(rate(nobatyar_http_requests_total[5m])), 0.001)
+          ) > (14.4 * 0.001)
+        for: 2m
+        labels: { severity: critical, slo: availability, burn_rate: "14.4" }
+        annotations:
+          summary: "بودجه خطای SLO با نرخ ۱۴٫۴× در حال مصرف است (حدود ۲ ساعت تا اتمام ۳۰ روزه)"
+          runbook: "docs/runbooks/incident-response.md"
+
+      - alert: SLOBurnRateSlow
+        expr: |
+          (
+            sum(rate(nobatyar_http_requests_total{status=~"5.."}[6h]))
+            / clamp_min(sum(rate(nobatyar_http_requests_total[6h])), 0.001)
+          ) > (6 * 0.001)
+          and
+          (
+            sum(rate(nobatyar_http_requests_total{status=~"5.."}[30m]))
+            / clamp_min(sum(rate(nobatyar_http_requests_total[30m])), 0.001)
+          ) > (6 * 0.001)
+        for: 15m
+        labels: { severity: warning, slo: availability, burn_rate: "6" }
+        annotations:
+          summary: "مصرف آهسته بودجه خطا (۶×) — اگر ادامه یابد SLO ماهانه نقض میشود"
+          runbook: "docs/runbooks/incident-response.md"
+
+      - alert: SLOBurnRateTicket
+        expr: |
+          (
+            sum(rate(nobatyar_http_requests_total{status=~"5.."}[3d]))
+            / clamp_min(sum(rate(nobatyar_http_requests_total[3d])), 0.001)
+          ) > (1 * 0.001)
+          and
+          (
+            sum(rate(nobatyar_http_requests_total{status=~"5.."}[6h]))
+            / clamp_min(sum(rate(nobatyar_http_requests_total[6h])), 0.001)
+          ) > (1 * 0.001)
+        for: 1h
+        labels: { severity: info, slo: availability, burn_rate: "1" }
+        annotations: { summary: "روند مصرف بودجه خطا طبیعی است — برای تیکت پیگیری در نظر بگیرید" }
+
+      - alert: BookingFunnelDrop
+        expr: |
+          sum(rate(nobatyar_business_last_hour{event="booking_created"}[5m]))
+          / clamp_min(sum(rate(nobatyar_business_last_hour{event="doctor_search"}[5m])), 0.001) < 0.02
+        for: 30m
+        labels: { severity: warning, slo: funnel }
+        annotations: { summary: "افت قابل توجه قیف جستجو ← رزرو (احتمالاً مشکل فرانت یا اسلاتها)" }

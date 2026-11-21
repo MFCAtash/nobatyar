@@ -1,0 +1,54 @@
+# پایش (اختیاری ولی برای بتا/production توصیه می‌شود):
+#   METRICS_TOKEN=$(openssl rand -hex 24)   # همان مقدار در .env.production
+#   printf '%s' "$METRICS_TOKEN" > infra/monitoring/metrics_token   # (gitignored)
+#   docker compose --env-file .env.production -f docker-compose.prod.yml -f docker-compose.monitoring.yml up -d
+# پورت‌ها فقط روی localhost: دسترسی از راه دور با SSH tunnel یا پشت VPN.
+services:
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    environment: { DOMAIN: "${DOMAIN:?DOMAIN}" }
+    entrypoint: ["/bin/sh", "-c", "sed \"s|\\$${DOMAIN}|$$DOMAIN|g\" /etc/prometheus/prometheus.tpl.yml > /tmp/prometheus.yml && exec /bin/prometheus --config.file=/tmp/prometheus.yml --storage.tsdb.retention.time=30d --storage.tsdb.path=/prometheus"]
+    volumes:
+      - ./infra/monitoring/prometheus.yml:/etc/prometheus/prometheus.tpl.yml:ro
+      - ./infra/monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - ./infra/monitoring/slo-burn-rate.yml:/etc/prometheus/slo-burn-rate.yml:ro
+      - ./infra/monitoring/metrics_token:/etc/prometheus/metrics_token:ro
+      - promdata:/prometheus
+    ports: ["127.0.0.1:9090:9090"]
+    networks: [backend]
+    restart: unless-stopped
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    volumes: ["./infra/monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro"]
+    ports: ["127.0.0.1:9093:9093"]
+    networks: [backend]
+    restart: unless-stopped
+  blackbox:
+    image: prom/blackbox-exporter:v0.25.0
+    command: ["--config.file=/etc/blackbox/blackbox.yml"]
+    volumes: ["./infra/monitoring/blackbox.yml:/etc/blackbox/blackbox.yml:ro"]
+    networks: [backend]
+    restart: unless-stopped
+
+  # پشتیبان‌گیری رمزنگاری‌شده‌ی دوره‌ای (profile ops): docker compose --profile ops up -d backup
+  backup:
+    profiles: ["ops"]
+    image: postgres:16-alpine
+    entrypoint: ["/bin/sh", "-c", "apk add --no-cache age curl >/dev/null && while true; do sh /scripts/backup-db.sh || true; sleep $${BACKUP_INTERVAL_SEC:-21600}; done"]
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:?POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB:?POSTGRES_DB}
+      BACKUP_AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:?BACKUP_AGE_RECIPIENT}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+      BACKUP_UPLOAD_CMD: ${BACKUP_UPLOAD_CMD:-}
+      BACKUP_PING_URL: ${BACKUP_PING_URL:-}
+      BACKUP_FAIL_WEBHOOK: ${BACKUP_FAIL_WEBHOOK:-}
+    volumes: ["./scripts:/scripts:ro", "backups:/backups"]
+    networks: [backend]
+    restart: unless-stopped
+
+volumes:
+  promdata:
+  backups:

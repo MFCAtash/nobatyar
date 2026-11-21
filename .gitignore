@@ -1,0 +1,19 @@
+node_modules/
+dist/
+.next/
+.turbo/
+coverage/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+.DS_Store
+# مهاجرت‌هایی که CI به‌صورت موقت می‌سازد (scripts/ci-db-setup.sh). مهاجرت‌های واقعی را commit کنید و این خط را بردارید.
+# apps/api/prisma/migrations/
+
+infra/monitoring/metrics_token
+
+# Storybook / تست بصری (baseline ها در apps/e2e/visual/__snapshots__ commit می‌شوند، گزارش‌ها نه)
+apps/web/storybook-static/
+apps/e2e/playwright-report/
+apps/e2e/test-results/

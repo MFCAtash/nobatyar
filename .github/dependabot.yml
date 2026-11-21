@@ -1,0 +1,31 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: weekly, day: monday, time: "05:00", timezone: Asia/Tehran }
+    open-pull-requests-limit: 8
+    groups:
+      nest:     { patterns: ["@nestjs/*"] }
+      prisma:   { patterns: ["prisma", "@prisma/*"] }
+      next-react: { patterns: ["next", "react", "react-dom", "@types/react*"] }
+      aws-sdk:  { patterns: ["@aws-sdk/*"] }
+      tooling:
+        patterns: ["eslint", "typescript-eslint", "typescript", "vitest", "turbo", "tsx"]
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+    labels: [dependencies]
+    commit-message: { prefix: "deps" }
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly, day: monday, time: "05:00", timezone: Asia/Tehran }
+    groups:
+      actions: { patterns: ["*"] }
+    labels: [dependencies, ci]
+    commit-message: { prefix: "ci" }
+
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule: { interval: weekly, day: monday, time: "05:00", timezone: Asia/Tehran }
+    labels: [dependencies, infra]
+    commit-message: { prefix: "infra" }

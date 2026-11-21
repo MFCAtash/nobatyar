@@ -1,0 +1,110 @@
+# زیرساخت توسعه‌ی محلی — همه‌ی پورت‌ها فقط روی 127.0.0.1 باز می‌شوند.
+name: nobatyar
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+      POSTGRES_DB: ${POSTGRES_DB:?set in .env}
+      APP_DB_USER: ${APP_DB_USER:-nobatyar_app}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?set in .env}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
+      - ./infra/postgres/01-roles.sh:/docker-entrypoint-initdb.d/01-roles.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set in .env}
+    command: ["sh", "-c", "exec redis-server --requirepass \"$$REDIS_PASSWORD\" --appendonly yes"]
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set in .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set in .env}
+      MINIO_API_CORS_ALLOW_ORIGIN: ${WEB_ORIGIN:-http://localhost:3001}   # PUT مستقیم مرورگر (presigned)
+    ports:
+      - "127.0.0.1:${MINIO_API_PORT:-9000}:9000"
+      - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET: ${MINIO_BUCKET:-nobatyar-private}
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD &&
+      mc mb --ignore-existing local/$$MINIO_BUCKET &&
+      mc anonymous set none local/$$MINIO_BUCKET &&
+      echo 'bucket ready (private)'
+      "
+    restart: "no"
+
+  # فاز ۷: سرور WebRTC (SFU). رسانه‌ی ویزیت از این سرویس عبور می‌کند، نه از API.
+  livekit:
+    image: livekit/livekit-server:v1.8
+    restart: unless-stopped
+    environment:
+      LIVEKIT_KEYS: "${LIVEKIT_API_KEY:?set in .env}: ${LIVEKIT_API_SECRET:?set in .env}"
+      LIVEKIT_CONFIG: |
+        port: 7880
+        log_level: info
+        rtc:
+          tcp_port: 7881
+          port_range_start: 50000
+          port_range_end: 50100
+          use_external_ip: false
+        room:
+          empty_timeout: 300      # اتاق خالی پس از ۵ دقیقه بسته می‌شود (قطع‌شدن موقت اینترنت)
+          max_participants: 2     # هر ویزیت دقیقاً دو نفر: پزشک و بیمار
+        webhook:
+          api_key: ${LIVEKIT_API_KEY}
+          urls:
+            - ${LIVEKIT_WEBHOOK_URL:-http://host.docker.internal:3000/api/v1/video/webhook}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:${LIVEKIT_PORT:-7880}:7880"
+      - "127.0.0.1:7881:7881"
+      - "127.0.0.1:50000-50100:50000-50100/udp"
+
+volumes:
+  pgdata:
+  redisdata:
+  miniodata:

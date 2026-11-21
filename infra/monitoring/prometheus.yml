@@ -1,0 +1,50 @@
+# Prometheus — پایش نوبتیار. اجرا: docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml up -d
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+  - /etc/prometheus/slo-burn-rate.yml
+
+alerting:
+  alertmanagers:
+    - static_configs: [{ targets: ["alertmanager:9093"] }]
+
+scrape_configs:
+  # همه‌ی نمونه‌های API (docker compose --scale api=N): DNS ی سرویس `api` همه‌ی IP ها را برمی‌گرداند
+  - job_name: api
+    metrics_path: /api/v1/metrics
+    authorization: { type: Bearer, credentials_file: /etc/prometheus/metrics_token }
+    dns_sd_configs: [{ names: [api], type: A, port: 3000 }]
+  - job_name: worker
+    metrics_path: /api/v1/metrics
+    authorization: { type: Bearer, credentials_file: /etc/prometheus/metrics_token }
+    static_configs: [{ targets: ["worker:3000"] }]
+
+  # آمادگی داخلی (DB + Redis) هر نمونه
+  - job_name: ready
+    metrics_path: /probe
+    params: { module: [ready] }
+    dns_sd_configs: [{ names: [api], type: A, port: 3000 }]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+        replacement: "http://${1}/api/v1/health/ready"
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115
+
+  # دسترس‌پذیری و گواهی TLS از «بیرون» (مسیر واقعی کاربر: Caddy ← web)
+  - job_name: external
+    metrics_path: /probe
+    params: { module: [https_2xx] }
+    static_configs: [{ targets: ["https://${DOMAIN}/login", "https://${DOMAIN}/api/v1/health"] }]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115

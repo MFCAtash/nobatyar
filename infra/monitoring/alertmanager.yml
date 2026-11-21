@@ -1,0 +1,20 @@
+# Alertmanager — مقصد را با webhook ی تلگرام/ایتا/Slack/ایمیل خودتان جایگزین کنید (متغیرها را پیش از اجرا جایگزین کنید).
+route:
+  receiver: ops
+  group_by: [alertname]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - matchers: [severity="critical"]
+      receiver: ops
+      repeat_interval: 1h
+receivers:
+  - name: ops
+    webhook_configs:
+      - url: "http://alert-relay:8080/alert"   # جایگزین: آدرس webhook ی کانال پایش شما
+        send_resolved: true
+inhibit_rules:
+  - source_matchers: [alertname="ExternalProbeFailing"]
+    target_matchers: [alertname=~"HighLatencyP95|HighErrorRate"]
+    equal: []

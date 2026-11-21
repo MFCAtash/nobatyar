@@ -1,0 +1,21 @@
+/* فاز ۲۲ — فونتهای قابلانتخاب فارسی و انگلیسی */
+@layer base {
+  :root {
+    --font-en: "Inter Variable", "Inter", system-ui, sans-serif;
+  }
+  [data-font="vazirmatn"] { --font-fa: "Vazirmatn Variable", "Vazirmatn", system-ui, sans-serif; }
+  [data-font="nastaliq"] {
+    --font-fa: "Noto Nastaliq Urdu Variable", "Noto Nastaliq Urdu", serif;
+    --lh-normal: 2.3; --lh-relaxed: 2.6;
+  }
+  [data-font="naskh"] { --font-fa: "Noto Naskh Arabic", serif; --lh-normal: 2; }
+  [data-font="amiri"] { --font-fa: "Amiri", serif; --lh-normal: 2.1; }
+  [data-font="scheherazade"] { --font-fa: "Scheherazade New", serif; --lh-normal: 2.1; }
+  [data-font="inter-en"] {
+    --font-fa: "Inter Variable", "Inter", system-ui, sans-serif;
+    --font-en: "Inter Variable", "Inter", system-ui, sans-serif;
+  }
+  /* متنهای لاتین/کدها همیشه از فونت انگلیسی جداگانه استفاده میکنند */
+  .ltr, code, pre, .num { font-family: var(--font-en); }
+  [data-theme="senior"] body { letter-spacing: .01em; }
+}
