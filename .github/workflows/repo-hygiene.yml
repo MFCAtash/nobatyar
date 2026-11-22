@@ -28,6 +28,11 @@ jobs:
             test -s "$f" || { echo "::error::missing $f"; exit 1; }
           done
 
+      - name: Demo video present
+        run: |
+          test -s docs/assets/video/video_2026-11-22_19-39-31.mp4 || { echo "::error::missing demo video"; exit 1; }
+          test -s docs/assets/video/demo-poster.png || { echo "::error::missing demo poster"; exit 1; }
+
       - name: No secrets tracked
         run: |
           if git ls-files | grep -Eq '(^|/)\.env($|\.)'; then

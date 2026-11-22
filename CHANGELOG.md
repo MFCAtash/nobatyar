@@ -13,6 +13,7 @@ All notable changes to NobatYar are documented here. This file follows Keep a Ch
 - Runtime correctness: M9 module registration, refund worker DI, funnel RLS write, full E2E MFA admin hook and tests.
 - GitHub readiness: bilingual README, view-only legal notice, security policy, issue templates, social-preview covers.
 - Four large 2560×1280 volumetric 3D covers with neon, aurora, amber and quantum-mesh palettes; English-only README with a full technical catalog.
+- Product demo MP4 and generated poster added to the README and guarded by CI hygiene checks.
 
 ### Changed / تغییرات
 

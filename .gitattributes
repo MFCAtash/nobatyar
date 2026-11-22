@@ -4,5 +4,6 @@
 *.jpg binary
 *.webp binary
 *.gif binary
+*.mp4 binary
 *.svg text eol=lf
 *.woff2 binary

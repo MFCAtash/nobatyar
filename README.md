@@ -40,6 +40,14 @@ High-resolution PNG files for GitHub Social Preview and all editable SVG sources
 
 ---
 
+## Product demo video
+
+[![NobatYar product demo](docs/assets/video/demo-poster.png)](docs/assets/video/video_2026-11-22_19-39-31.mp4)
+
+A 1:10 walkthrough of the doctor-discovery and booking experience, recorded from the running application. Click the poster to open the MP4 in GitHub's native video player. The source file is stored at `docs/assets/video/video_2026-11-22_19-39-31.mp4` (20 MB, well below GitHub's 100 MB file limit; Git LFS is not required).
+
+---
+
 ## 1. Executive summary
 
 NobatYar is a comprehensive, production-oriented digital health platform engineered around the entire clinical journey: doctor discovery, intelligent appointment scheduling, deterministic payment handling, online and in-person consultations, and a patient-centered health record. It is a fully right-to-left (RTL) Persian product built as a **Modular Monolith**, where a single NestJS/Prisma write layer enforces PostgreSQL Row Level Security on every transaction. This design decision is deliberate: authorization, ownership, consent, and auditability are guaranteed by the data layer rather than by scattered application checks.

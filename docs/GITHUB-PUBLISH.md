@@ -27,7 +27,11 @@ GitHub برای Social Preview فقط PNG/JPG میپذیرد (SVG نه). فای�
 
 مسیر: `Repository → Settings → General → Social preview → Upload image`
 
-همچنین سه نسخهٔ SVG در همان پوشه برای README و ویرایش آسان موجوداند.
+همچنین سه نسخهٔ SVG در همان پوشه برای README و ویرایش آسان موجوداند. کاورهایlargeتر 2560×1280 نیزموجوداند: `cover-neon-glass`, `cover-aurora-3d`, `cover-amber-vitality`, `cover-quantum-mesh`.
+
+## ۴.۱) فیلم دمو در README
+
+فایل `docs/assets/video/video_2026-11-22_19-39-31.mp4` (حدود ۲۰ مگابایت) همراه با پوستر `demo-poster.png` در README قرار داده شده است. چون کمتر از ۱۰۰ مگابایت است نیازی به Git LFS نیست و GitHub آنرا با پخشکنندهٔ داخلی نمایش میدهد.
 
 ## ۴) تنظیمات پیشنهادی ریپو
 
