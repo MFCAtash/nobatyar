@@ -110,7 +110,7 @@ services:
 
   redis:
     <<: *hardening
-    image: redis:7-alpine
+    image: redis:8-alpine
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
     command: ["sh", "-c", "exec redis-server --requirepass \"$$REDIS_PASSWORD\" --appendonly yes"]
