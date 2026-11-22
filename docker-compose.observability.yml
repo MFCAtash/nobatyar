@@ -21,7 +21,7 @@ services:
     networks: [backend]
     restart: unless-stopped
   tempo:
-    image: grafana/tempo:2.3.1
+    image: grafana/tempo:3.1.1
     command: ["-config.file=/etc/tempo/tempo.yml"]
     volumes: ["./infra/monitoring/tempo.yml:/etc/tempo/tempo.yml:ro", "tempodata:/tempo"]
     ports: ["127.0.0.1:4317:4317", "127.0.0.1:4318:4318", "127.0.0.1:3200:3200"]
