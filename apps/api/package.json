@@ -49,7 +49,7 @@
     "@opentelemetry/exporter-trace-otlp-http": "^0.55.0",
     "@opentelemetry/sdk-node": "^0.55.0",
     "@opentelemetry/sdk-trace-base": "^1.28.0",
-    "@prisma/client": "^5.22.0",
+    "@prisma/client": "^7.10.1",
     "@prisma/instrumentation": "^5.22.0",
     "@sentry/node": "^8.30.0",
     "@simplewebauthn/server": "10.0.0",

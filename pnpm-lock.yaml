@@ -60,8 +60,8 @@ importers:
         specifier: 1.30.1
         version: 1.30.1(@opentelemetry/api@1.10.0)
       '@prisma/client':
-        specifier: ^5.22.0
-        version: 5.22.0(prisma@5.22.0)
+        specifier: ^7.10.1
+        version: 7.10.1(prisma@5.22.0)(typescript@5.9.3)
       '@prisma/instrumentation':
         specifier: ^5.22.0
         version: 5.22.0
@@ -2478,13 +2478,19 @@ packages:
       webpack-plugin-serve:
         optional: true
 
-  '@prisma/client@5.22.0':
-    resolution: {integrity: sha512-M0SVXfyHnQREBKxCgyo7sffrKttwE6R8PMq330MIUF0pTwjUhLbW84pFDlf06B27XyCR++VtjugEnIHdr07SVA==}
-    engines: {node: '>=16.13'}
+  '@prisma/client-runtime-utils@7.10.1':
+    resolution: {integrity: sha512-AzoATVIgmO3lcZfM443+9SI7+cyLMW2+Psw4op8WQHpHvHCX//CKxv8fwhiL0yGWF8DjdQrFewxrZo5McBdB8g==}
+
+  '@prisma/client@7.10.1':
+    resolution: {integrity: sha512-5tgAbFGh//zVOC6WPNVgziOErJHYkUE+wmqCwbIyq6IrTXUYtv9y2iBFGh/Owo99Mx0+cr0j1FOrxkYBMuyhaQ==}
+    engines: {node: ^20.19 || ^22.12 || >=24.0}
     peerDependencies:
       prisma: '*'
+      typescript: '>=5.4.0'
     peerDependenciesMeta:
       prisma:
+        optional: true
+      typescript:
         optional: true
 
   '@prisma/debug@5.22.0':
@@ -8731,9 +8737,14 @@ snapshots:
       type-fest: 2.19.0
       webpack-hot-middleware: 2.26.1
 
-  '@prisma/client@5.22.0(prisma@5.22.0)':
+  '@prisma/client-runtime-utils@7.10.1': {}
+
+  '@prisma/client@7.10.1(prisma@5.22.0)(typescript@5.9.3)':
+    dependencies:
+      '@prisma/client-runtime-utils': 7.10.1
     optionalDependencies:
       prisma: 5.22.0
+      typescript: 5.9.3
 
   '@prisma/debug@5.22.0': {}
 
