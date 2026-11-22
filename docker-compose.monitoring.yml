@@ -24,7 +24,7 @@ services:
     networks: [backend]
     restart: unless-stopped
   blackbox:
-    image: prom/blackbox-exporter:v0.25.0
+    image: prom/blackbox-exporter:v0.29.1
     command: ["--config.file=/etc/blackbox/blackbox.yml"]
     volumes: ["./infra/monitoring/blackbox.yml:/etc/blackbox/blackbox.yml:ro"]
     networks: [backend]
