@@ -68,4 +68,10 @@ export class NotificationAdminController {
     requireFlag();
     return this.svc.retryDeadLetter(user, id);
   }
+
+  @Post("dead-letters/:id/escalate")
+  escalate(@CurrentUser() user: AuthUser, @Param("id", new ParseUUIDPipe()) id: string) {
+    requireFlag();
+    return this.svc.escalateDeadLetter(user, id);
+  }
 }

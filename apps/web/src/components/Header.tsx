@@ -31,6 +31,7 @@ const PATIENT: NavItem[] = [
   ...(moduleEnabled("FF_M10_TRIAGE_GOV") ? [{ href: "/triage/ruleset", label: "قواعد ارزیابی", group: "خدمات" }] : []),
   ...(moduleEnabled("FF_M14_ECOSYSTEM") ? [{ href: "/growth/clinics", label: "کلینیک‌ها", group: "خدمات" }] : []),
   ...(moduleEnabled("FF_M15_WCAG") || moduleEnabled("FF_M5_NOTIF_ORCHESTRATOR") ? [{ href: "/settings/preferences", label: "تنظیمات من", group: "حساب" }] : []),
+  ...(moduleEnabled("FF_M6_SMART_FILES") ? [{ href: "/files/upload", label: "آپلود امن فایل", group: "خدمات" }] : []),
 ];
 const DOCTOR: NavItem[] = [
   { href: "/doctor", label: "پنل پزشک", exact: true, group: "کار من" },
@@ -41,6 +42,7 @@ const DOCTOR: NavItem[] = [
   ...(moduleEnabled("FF_M7_CHAT_ASSIST") ? [{ href: "/chat/assist", label: "دستیار چت", group: "کار من" }] : []),
   ...(moduleEnabled("FF_M8_VIDEO_SMART") ? [{ href: "/video/policy", label: "سیاست ویدئو", group: "کار من" }] : []),
   ...(moduleEnabled("FF_M14_ECOSYSTEM") ? [{ href: "/growth/clinics", label: "فضای کاری و کلینیک‌ها", group: "کار من" }] : []),
+  ...(moduleEnabled("FF_M6_SMART_FILES") ? [{ href: "/files/upload", label: "آپلود امن فایل", group: "کار من" }] : []),
 ];
 const ADMIN: NavItem[] = [
   { href: "/admin/verifications", label: "تأیید پزشکان", group: "مدیریت" },
@@ -50,6 +52,7 @@ const ADMIN: NavItem[] = [
   { href: "/admin/data-requests", label: "درخواستهای حریم خصوصی", group: "مدیریت" },
   ...(moduleEnabled("FF_M11_AUTO_OPS") ? [{ href: "/admin/ops", label: "عملیات و SLO", group: "مدیریت" }] : []),
   ...(moduleEnabled("FF_M13_PRODUCT_ANALYTICS") ? [{ href: "/admin/analytics", label: "تحلیل محصول", group: "مدیریت" }] : []),
+  ...(moduleEnabled("FF_M10_TRIAGE_GOV") ? [{ href: "/admin/triage-rulesets", label: "قواعد triage", group: "مدیریت" }] : []),
 ];
 
 /** B1: ناوبری گروهی — ۳ لینک اصلی + drawer قابلدسترس برای بقیه. */

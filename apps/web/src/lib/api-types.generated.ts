@@ -105,6 +105,16 @@ export interface Operations {
     body: undefined;
     response: unknown;
   };
+  "POST /admin/dead-letters/{id}/escalate": {
+    params: { id: string };
+    query: undefined;
+    body: undefined;
+    response: {
+      id: string;
+      escalated: boolean;
+      attempts: number;
+    };
+  };
   "POST /admin/dead-letters/{id}/retry": {
     params: { id: string };
     query: undefined;
@@ -1891,6 +1901,7 @@ export const OPERATIONS = {
   "GET /admin/data-requests": { method: "GET", path: "/admin/data-requests", public: false, idempotency: null, summary: "صف درخواستهای حذف/خروجی" },
   "POST /admin/data-requests/{id}/review": { method: "POST", path: "/admin/data-requests/{id}/review", public: false, idempotency: null, summary: "رأی دو نفره ادمین (پس از ۲ تأیید، اجرا ۳۰ روز بعد)" },
   "GET /admin/dead-letters": { method: "GET", path: "/admin/dead-letters", public: false, idempotency: null, summary: "صف نامه‌های مرده (DLQ)" },
+  "POST /admin/dead-letters/{id}/escalate": { method: "POST", path: "/admin/dead-letters/{id}/escalate", public: false, idempotency: null, summary: "ارتقای تلفنی on-call پس از ناکامی کانالها" },
   "POST /admin/dead-letters/{id}/retry": { method: "POST", path: "/admin/dead-letters/{id}/retry", public: false, idempotency: null, summary: "علامت‌گذاری برای ارسال مجدد" },
   "GET /admin/doctor-verifications": { method: "GET", path: "/admin/doctor-verifications", public: false, idempotency: null, summary: "مدارک پزشکان در انتظار بررسی" },
   "POST /admin/doctor-verifications/{id}/approve": { method: "POST", path: "/admin/doctor-verifications/{id}/approve", public: false, idempotency: null, summary: "تأیید مدارک پزشک" },

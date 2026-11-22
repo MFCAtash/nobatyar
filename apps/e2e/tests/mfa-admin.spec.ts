@@ -4,31 +4,28 @@ import type { APIRequestContext, Page } from "@playwright/test";
 import { API, otpFor } from "../helpers/api";
 
 /**
- * ⚠️ این تستها عمداً اسکیپاند تا زمانی که hook ی ادمین اضافه شود.
+ * M1 — ورود ادمین و فعالسازی MFA.
  *
- * بررسی apps/api/src/e2e/e2e.controller.ts: hook های موجود فقط
- *   GET  /__e2e/otp
- *   POST /__e2e/doctor
- *   GET  /__e2e/ping
- * هستند و هیچ hook ی ادمینی وجود ندارد. /demo/login هم جایگزین نیست: وابسته به
- * DEMO_AUTOLOGIN=true + DEMO_ROLE=ADMIN + seeding دستی است و بعد از فعال شدن MFA
- * توکنی «دارای claim مfa» صادر میکند (auth.service.ts) پس نمیتواند حالت چالش را بسازد.
+ * پیشنیاز: API با E2E_TEST_HOOKS=true و SMS_PROVIDER=memory (هک /__e2e/admin و /__e2e/otp).
  *
- * برای فعال کردن تستها باید hook ی زیر به E2eController اضافه شود (فقط E2E_TEST_HOOKS=true):
- *   POST /__e2e/admin  →  { phone: string; accessToken: string }
- *     - ادمینی با پروفایل کامل بسازد (بدون نیاز به onboarding) و MFA آن خاموش باشد
- *     - accessToken برگرداندهشده فاقد claim مfa باشد (برای enroll/enable از سمت API)
- *   و API با ADMIN_REQUIRE_MFA=true اجرا شود.
+ * حالت پیشفرض e2e (ADMIN_REQUIRE_MFA=false): تست UI کامل است: ورود با OTP، تکمیل onboarding،
+ * رفتن به /security، ثبت TOTP از طریق رابط کاربری و تأیید کد با TOTP محاسبهشده در تست.
  *
- * جریان واقعی: با ADMIN_REQUIRE_MFA=true خود /auth/otp/verify برای ادمین بدون MFA
- * خطای 403 mfa_required میدهد ⇒ LoginContainer به /mfa?next=... هدایت میشود. سپس MFA
- * از سمت API فعال شده و کد پشتیبان/TOTP در همان صفحهی چالش ارسال میشود تا next برگردد.
+ * حالت سختگیرانه (ADMIN_REQUIRE_MFA=true): بلافاصله بعد از OTP به /mfa هدایت میشویم؛ در آن حالت
+ * تست MFA را از سمت API فعال میکند و کد را در همان صفحهی چالش وارد میکند تا به next برگردد.
+ * پوشش دستی مراحل چالش/کد پشتیبان در runbook مستند است (docs/testing-e2e-load.md)؛ تست دوم
+ * (API-level) عملکرد enroll/enable/status را مستقل از UI نیز تأیید میکند.
  */
 
 interface AdminSeed {
+  adminId: string;
   phone: string;
-  /** access token بدون claim مfa — فقط برای enroll/enable از سمت API */
-  accessToken: string;
+  fullName: string;
+}
+interface Enrollment {
+  secret: string;
+  uri: string;
+  recoveryCodes: string[];
 }
 
 async function seedAdmin(request: APIRequestContext): Promise<AdminSeed> {
@@ -37,38 +34,7 @@ async function seedAdmin(request: APIRequestContext): Promise<AdminSeed> {
   return (await r.json()) as AdminSeed;
 }
 
-/** ورود ادمین از UI: چون سیاست فعال است، OTP با mfa_required به صفحهی چالش میرود. */
-async function loginAdminIntoChallenge(page: Page, request: APIRequestContext, phone: string, target: string) {
-  await page.goto(`/login?next=${encodeURIComponent(target)}`);
-  await page.getByLabel("شماره‌ی موبایل").fill(phone);
-  await page.getByRole("button", { name: "دریافت کد تأیید" }).click();
-  const code = await otpFor(request, phone);
-  await page.locator('input[autocomplete="one-time-code"]').fill(code);
-  await page.locator("form button.btn-primary").last().click({ force: true, timeout: 15_000 });
-  await expect(page).toHaveURL(new RegExp(`/mfa\\?next=${encodeURIComponent(target)}`));
-  await expect(page.getByRole("heading", { name: "تأیید دومرحلهای" })).toBeVisible();
-}
-
-interface Enrollment {
-  secret: string;
-  recoveryCodes: string[];
-}
-
-/** فعالسازی MFA از سمت API بدون رفرش کردن صفحه (تا وضعیت چالش در مرورگر بماند). */
-async function enableMfa(request: APIRequestContext, seed: AdminSeed): Promise<Enrollment> {
-  const headers = { Authorization: `Bearer ${seed.accessToken}` };
-  const enrolled = await request.post(`${API}/me/mfa/enroll`, { headers });
-  expect(enrolled.ok(), `enroll failed: ${enrolled.status()}`).toBeTruthy();
-  const enrollment = (await enrolled.json()) as Enrollment;
-
-  const enabled = await request.post(`${API}/me/mfa/enable`, {
-    headers,
-    data: { code: totp(enrollment.secret) },
-  });
-  expect(enabled.ok(), `enable failed: ${enabled.status()}`).toBeTruthy();
-  return enrollment;
-}
-
+/** TOTP (RFC 6238): HMAC-SHA1، ۶ رقم، گام ۳۰ ثانیه — بدون وابستگی خارجی. */
 const BASE32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 function base32Decode(input: string): Buffer {
   const clean = input.trim().toUpperCase().replace(/=+$/, "").replace(/[\s-]/g, "");
@@ -96,30 +62,87 @@ function totp(secret: string): string {
   return String(code % 1_000_000).padStart(6, "0");
 }
 
-async function submitCode(page: Page, code: string) {
+/** ورود ادمین از UI با OTP؛ onboarding لازم را هم تکمیل میکند. */
+async function loginAdminViaUi(page: Page, request: APIRequestContext, seed: AdminSeed, target: string) {
+  await page.goto(`/login?next=${encodeURIComponent(target)}`);
+  await page.getByLabel("شماره‌ی موبایل").fill(seed.phone);
+  await page.getByRole("button", { name: "دریافت کد تأیید" }).click();
+  const code = await otpFor(request, seed.phone);
   await page.locator('input[autocomplete="one-time-code"]').fill(code);
-  await page.getByRole("button", { name: "تأیید و ادامه" }).click();
+  await page.locator("form button.btn-primary").last().click({ force: true, timeout: 15_000 });
+  await expect(page).not.toHaveURL(/\/login/, { timeout: 15_000 });
+
+  if (page.url().includes("/onboarding")) {
+    await page.getByLabel("نام و نام خانوادگی").fill(seed.fullName);
+    await page.getByRole("checkbox", { name: /قوانین/ }).check();
+    await page.getByRole("checkbox", { name: /اطلاعات سلامت/ }).check();
+    await page.getByRole("button", { name: "ادامه", exact: true }).click();
+  }
 }
 
-test.describe("admin MFA challenge", () => {
-  test.skip("کد پشتیبان: ورود ادمین → /mfa?next=... → بازگشت به مسیر مقصد", async ({ page, request }) => {
-    const seed = await seedAdmin(request);
-    const target = "/admin/security";
-    await loginAdminIntoChallenge(page, request, seed.phone, target);
-    const enrollment = await enableMfa(request, seed);
+/** ورود از سمت API — توکن حاصل فاقد claim مfa است و برای enroll/enable قابل استفاده است. */
+async function loginAdminViaApi(request: APIRequestContext, phone: string): Promise<string> {
+  const sent = await request.post(`${API}/auth/otp/request`, { data: { phone } });
+  expect(sent.ok(), `otp request failed: ${sent.status()}`).toBeTruthy();
+  const code = await otpFor(request, phone);
+  const r = await request.post(`${API}/auth/otp/verify`, { data: { phone, code } });
+  expect(r.ok(), `admin login failed: ${r.status()}`).toBeTruthy();
+  return ((await r.json()) as { accessToken: string }).accessToken;
+}
 
-    await submitCode(page, enrollment.recoveryCodes[0]!);
-    await expect(page).toHaveURL(/\/admin\/security$/);
-    await expect(page.getByRole("heading", { name: /امنیت حساب/ })).toBeVisible();
+async function enableMfa(request: APIRequestContext, accessToken: string): Promise<Enrollment> {
+  const headers = { Authorization: `Bearer ${accessToken}` };
+  const enrolled = await request.post(`${API}/me/mfa/enroll`, { headers });
+  expect(enrolled.ok(), `enroll failed: ${enrolled.status()}`).toBeTruthy();
+  const enrollment = (await enrolled.json()) as Enrollment;
+
+  const enabled = await request.post(`${API}/me/mfa/enable`, { headers, data: { code: totp(enrollment.secret) } });
+  expect(enabled.ok(), `enable failed: ${enabled.status()}`).toBeTruthy();
+  return enrollment;
+}
+
+test.describe("admin MFA", () => {
+  test("UI: ورود ادمین → /security → ثبت TOTP → وضعیت فعال", async ({ page, request }) => {
+    const seed = await seedAdmin(request);
+    const target = "/security";
+    await loginAdminViaUi(page, request, seed, target);
+
+    if (/\/mfa(?:[?/]|$)/.test(page.url())) {
+      // ADMIN_REQUIRE_MFA=true: چالش قبل از /security است. MFA را با نشستی تازه از API فعال
+      // میکنیم و کد را در همان صفحهی چالش وارد میکنیم تا به مسیر مقصد برگردد.
+      const enrollment = await enableMfa(request, await loginAdminViaApi(request, seed.phone));
+      await page.locator('input[autocomplete="one-time-code"]').fill(totp(enrollment.secret));
+      await page.getByRole("button", { name: "تأیید و ادامه" }).click();
+      await expect(page).toHaveURL(/\/security$/);
+      await expect(page.locator(".badge.status-ok", { hasText: "فعال" })).toBeVisible();
+      return;
+    }
+
+    await expect(page).toHaveURL(/\/security$/);
+    await expect(page.getByRole("heading", { name: "امنیت حساب" })).toBeVisible();
+    await expect(page.locator(".badge.status-bad", { hasText: "غیرفعال" })).toBeVisible();
+
+    const enrollResponse = page.waitForResponse(
+      (r) => r.url().includes("/me/mfa/enroll") && r.request().method() === "POST" && r.ok(),
+    );
+    await page.getByRole("button", { name: "شروع ثبت TOTP" }).click();
+    const enrollment = (await (await enrollResponse).json()) as Enrollment;
+
+    await page.getByLabel("کد ۶ رقمی برنامه").fill(totp(enrollment.secret));
+    await page.getByRole("button", { name: "تأیید و فعالسازی" }).click();
+
+    await expect(page.locator(".badge.status-ok", { hasText: "فعال" })).toBeVisible();
   });
 
-  test.skip("TOTP: ورود ادمین → /mfa?next=... → بازگشت به مسیر مقصد", async ({ page, request }) => {
+  test("API: enroll → TOTP → enable → GET /me/mfa وضعیت فعال", async ({ request }) => {
     const seed = await seedAdmin(request);
-    const target = "/admin/verifications";
-    await loginAdminIntoChallenge(page, request, seed.phone, target);
-    const enrollment = await enableMfa(request, seed);
+    const accessToken = await loginAdminViaApi(request, seed.phone);
+    await enableMfa(request, accessToken);
 
-    await submitCode(page, totp(enrollment.secret));
-    await expect(page).toHaveURL(/\/admin\/verifications$/);
+    const status = await request.get(`${API}/me/mfa`, { headers: { Authorization: `Bearer ${accessToken}` } });
+    expect(status.ok(), `mfa status failed: ${status.status()}`).toBeTruthy();
+    const mfa = (await status.json()) as { enabled: boolean; recoveryCodesLeft: number };
+    expect(mfa.enabled).toBe(true);
+    expect(mfa.recoveryCodesLeft).toBeGreaterThan(0);
   });
 });

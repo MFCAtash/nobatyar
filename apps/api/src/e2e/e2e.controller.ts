@@ -62,6 +62,21 @@ export class E2eController {
     return { doctorId: id, phone: `0${phone.slice(2)}`, fullName };
   }
 
+  /** ادمین تست (بدون پروفایل پزشک و بدون MFA) با شماره تصادفی — فقط E2E_TEST_HOOKS=true. */
+  @Public()
+  @Post("admin")
+  async admin() {
+    const phone = `989${randomInt(100_000_000, 999_999_999)}`;
+    const id = randomUUID();
+    const fullName = "ادمین تست";
+    await this.prisma.withContext({ role: "SYSTEM" }, async (tx) => {
+      await tx.user.create({
+        data: { id, role: "ADMIN", phoneHash: this.crypto.blindIndex(phone, "phone"), phoneEnc: this.crypto.encrypt(phone, aad("users", id, "phone")) },
+      });
+    });
+    return { adminId: id, phone: `0${phone.slice(2)}`, fullName };
+  }
+
   /** فقط برای اطمینان از اینکه hook ها فعال‌اند (health ی تست). */
   @Public()
   @Get("ping")

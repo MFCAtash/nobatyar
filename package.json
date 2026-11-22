@@ -20,6 +20,12 @@
     "infra:reset": "docker compose down -v && docker compose up -d --wait",
     "e2e": "pnpm --filter @nobatyar/e2e e2e",
     "quality:all": "pnpm -r typecheck && pnpm -r test && pnpm --filter @nobatyar/api openapi:check",
+    "quality:mutation": "node scripts/quality-mutation.mjs",
+    "quality:visual": "node scripts/quality-visual.mjs",
+    "quality:a11y": "node scripts/quality-a11y.mjs",
+    "quality:sbom": "node scripts/quality-sbom.mjs",
+    "canary:dry": "node scripts/canary-rollout.mjs",
+    "canary:apply": "node scripts/canary-rollout.mjs --apply",
     "vapid": "node scripts/gen-vapid.mjs"
   },
   "devDependencies": {

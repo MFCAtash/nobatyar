@@ -349,4 +349,6 @@ export const ROUTES: RouteDoc[] = [
   { method: "put", path: "/me/ui-preferences", tag: "Design", summary: "به‌روزرسانی ترجیحات ظاهر/دسترس‌پذیری", auth: "user", body: uiPreferencesSchema, ok: { status: 200 } },
   // ─── M6: خط لوله امن فایل ────────────────────────────────────────────────
   { method: "post", path: "/storage/finalize", tag: "Storage", summary: "تحلیل، قرنطینه و اسکن فایل آپلودشده (فقط APPROVED قابل ارائه)", auth: "user", body: obj({ bucket: { enum: ["chat", "records"] }, objectKey: str(), mime: str(), bytes: { type: "integer", minimum: 1 } }), ok: { status: 201, schema: obj({ objectKey: str(), state: { enum: ["PENDING", "SCANNING", "APPROVED", "REJECTED"] }, detectedMime: str() }) }, errors: { 400: "module_disabled | file_rejected | file_not_scanned" } },
+  // ─── M5: ارتقای تلفنی DLQ ────────────────────────────────────────────────
+  { method: "post", path: "/admin/dead-letters/:id/escalate", tag: "Admin · Notifications", summary: "ارتقای تلفنی on-call پس از ناکامی کانالها", auth: "admin", ok: { status: 201, schema: obj({ id: str(), escalated: { type: "boolean" }, attempts: { type: "integer" } }) }, errors: { 404: "not_found" } },
 ];

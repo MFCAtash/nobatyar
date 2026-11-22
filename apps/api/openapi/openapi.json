@@ -696,6 +696,78 @@
         ]
       }
     },
+    "/admin/dead-letters/{id}/escalate": {
+      "post": {
+        "tags": [
+          "Admin · Notifications"
+        ],
+        "summary": "ارتقای تلفنی on-call پس از ناکامی کانالها",
+        "operationId": "postAdminDead-lettersIdEscalate",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "موفق",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "escalated": {
+                      "type": "boolean"
+                    },
+                    "attempts": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "escalated",
+                    "attempts"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "ADMIN"
+        ]
+      }
+    },
     "/admin/dead-letters/{id}/retry": {
       "post": {
         "tags": [

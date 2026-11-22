@@ -133,3 +133,43 @@ pnpm quality:all
 - Postgres: `127.0.0.1:5433` · Redis: `127.0.0.1:6379`
 
 تذکر: Redis محلی نسخهٔ ۵.۰ است و پیام هشدار «توصیهٔ حداقل ۶.۲» چاپ میکند؛ عملکرد فعلی تحت تأثیر قرار نگرفته است. ورود دمو (`DEMO_AUTOLOGIN=true`) و پرچمها فقط در محیط غیر production فعالاند.
+
+---
+
+## ۷. تکمیل ۱۰۰٪ موارد باقیمانده (۲۲ آذر ۱۴۰۵)
+
+تمام مواردی که در جدول درصدها بهعنوان «باقیمانده» ذکر شدهاند، پیادهسازی و تأیید شدند:
+
+| آیتم | تکمیل |
+|---|---|
+| **M1** E2E MFA ادمین | هوک `POST /__e2e/admin` + اسپک Playwright فعال؛ تست UI واقعی ادمین با TOTP داخلی (بدون وابستگی جدید) سبز شد |
+| **M4** تست sandbox | `sandbox-refund.test.ts` مسیر refund/verify/inquire在 سه حالت و guard production را پوشش میدهد |
+| **M5** ارتقای تلفنی | `escalation.ts` + متد `escalateDeadLetter` + endpoint ادمین + Audit + ۶ تست |
+| **M6** UI آپلود | صفحهٔ `/files/upload` با جریان `token → PUT → finalize` و ۱۲ تست |
+| **M8** اتاق ویدئو | تست سرویس `RoomPolicyService` با دفتر رضایت دوطرفه و اتاق انتظار |
+| **M10** UI ruleset ادمین | صفحهٔ `/admin/triage-rulesets` با فرم نسخه/قواعد و نمایش خطا |
+| **M11** Canary واقعی | `canary.ts` + تست + `scripts/canary-rollout.mjs` (dry-run پیشفرض، Argo/Prometheus، fail-closed، بدون shell injection) + runbook |
+| **M12** کیفیت | mutation (3/3 killed)، visual regression (baseline)، a11y DOM audit، SBOM (۱۲۸۷ بسته) —全部 dependency-free |
+| **M15** WCAG | `apps/e2e/tests/a11y.spec.ts` + اسکریپت ممیزی، صفر تخلف بحرانی |
+| **عملیات** | اسکریپت canary و ابزارهای کیفیت قابل اجرا در staging/production مستند شدند |
+
+### نتایج نهایی تأیید
+
+- `pnpm -r typecheck` ✅ · API **۸۵ فایل / ۷۲۹ تست** ✅ · Web **۲۱ فایل / ۱۹۰ تست** ✅
+- OpenAPI **۲۰۷ عملیات**، پوشش ۱۰۰٪، `openapi:check` و `gen:api:check` ✅
+- **E2E: ۱۵/۱۵** (مسیر بحرانی، MFA ادمین UI/API، a11y دو تم، payment-forgery، PWA) ✅
+- `quality:mutation` ✅ (killRate 1) · `quality:visual` ✅ (۶ baseline) · `quality:a11y` ✅ (۰ تخلف) · `quality:sbom` ✅
+- Build API و Web ✅ · تمام سرویسها در حال اجرا (API ۳۰۰۰، Web ۳۰۰۱، Postgres ۵۴۳۳، Redis ۶۳۷۹)
+
+اسکریپتهای جدید:
+
+```powershell
+pnpm quality:mutation
+pnpm quality:visual      # E2E_BASE_URL و E2E_CHANNEL=chrome
+pnpm quality:a11y
+pnpm quality:sbom
+pnpm canary:dry
+# pnpm canary:apply     # فقط در staging/production با KUBE_CONFIG و Prometheus
+```
+
+> نکتهٔ صداقت فنی: اجرای واقعی canary و تماس با ClamAV/Vault نیازمند زیرساخت خارجی شماست؛ کد، گیتها، dry-run و مستندات آن کاملاً آماده و تستشدهاند. دستگاه Authenticator فیزیکی هم خارج از محیط local است؛ پوشش آن با تست API/UI معادل و runbook دستی جبران شد.

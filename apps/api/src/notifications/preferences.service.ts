@@ -2,6 +2,7 @@ import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { AuditService } from "../audit/audit.service";
 import type { AuthUser } from "../common/decorators";
 import { PrismaService } from "../prisma/prisma.service";
+import { escalationTarget, shouldEscalate } from "./escalation";
 import { mergePreferences, type PreferenceRow } from "./orchestrator";
 import type { PutPreferencesInput } from "./preferences.schemas";
 
@@ -115,5 +116,35 @@ export class NotificationPreferencesService {
       meta: { channel: row.channel, retryCount: updated.retryCount },
     });
     return { id, retryCount: updated.retryCount };
+  }
+
+  /** ارتقای تلفنی به مسئولِ آمادهباش: تصمیم + ثبت Audit (بدون تماس خارجی). */
+  async escalateDeadLetter(user: AuthUser, id: string) {
+    const row = await this.prisma.withContext({ role: "SYSTEM" }, (tx) =>
+      tx.deadLetterNotice.findUnique({ where: { id } }),
+    );
+    if (!row) throw new NotFoundException();
+    const updated = await this.prisma.withContext({ role: "SYSTEM" }, (tx) =>
+      tx.deadLetterNotice.update({ where: { id }, data: { retryCount: { increment: 1 } } }),
+    );
+    const escalated = shouldEscalate({
+      eventType: row.channel === "sms" ? "APPOINTMENT_REMINDER" : "SECURITY",
+      retryCount: updated.retryCount,
+      urgent: row.channel === "sms",
+      quiet: false,
+      acknowledged: false,
+    });
+    const attempts = escalated ? escalationTarget(updated.retryCount) : 0;
+    if (escalated) {
+      await this.audit.log({
+        actorId: user.id,
+        actorRole: user.role,
+        action: "notification.escalation.call",
+        objectType: "dead_letter_notices",
+        objectId: id,
+        meta: { escalated: true, attempts },
+      });
+    }
+    return { id, escalated, attempts };
   }
 }
