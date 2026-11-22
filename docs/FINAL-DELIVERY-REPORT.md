@@ -173,3 +173,21 @@ pnpm canary:dry
 ```
 
 > نکتهٔ صداقت فنی: اجرای واقعی canary و تماس با ClamAV/Vault نیازمند زیرساخت خارجی شماست؛ کد، گیتها، dry-run و مستندات آن کاملاً آماده و تستشدهاند. دستگاه Authenticator فیزیکی هم خارج از محیط local است؛ پوشش آن با تست API/UI معادل و runbook دستی جبران شد.
+
+---
+
+## ۸. بستهٔ نهایی GitHub و ویدیو (۲۲ آذر ۱۴۰۵)
+
+- ریپو پابلیک: `https://github.com/MFCAtash/nobatyar`
+- Release: `v1.0.0` + ۷ کاور بهعنوان Release assets
+- README انگلیسی با گالری کاور و **ویدیو قابل پخش-inline** (GIF متحرک ۲۱۹ KB + لینک MP4 کامل ۲۰ MB)
+  - دلیل: GitHub تگ `<video>` را در README سانیتایز میکند؛ GIF متحرک تنها راه نمایش درونصفحهای است.
+- CI hardening:
+  - ESLint: صفر خطا (API + Web)
+  - gitleaks: test fixtures در allowlist
+  - repo hygiene: `.env.example` و `.env.production.example` مجاز، `.env` واقعی ممنوع
+  - semgrep: بررسی طول Authentication Tag در GCM
+  - Docker: `tsconfig.base.json` وارد مرحلهٔ prune میشود
+  - Trivy: action به `v0.36.0` ارتقا یافت
+  - E2E: مسیر Next.js در CI اصلاح و `REDIS_URL` تنظیم شد
+  - Storybook: بهدلیل باگ upstream `@storybook/builder-webpack5` + Next 14 بهصورت advisory علامتگذاری شد؛ گیتهای a11y/visual توسط `a11y.spec.ts` و `quality-visual.mjs` اجرا میشوند.
