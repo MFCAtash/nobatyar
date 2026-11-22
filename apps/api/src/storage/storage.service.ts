@@ -1,7 +1,12 @@
 import type { S3Client } from "@aws-sdk/client-s3";
 import { randomUUID } from "node:crypto";
-import { BadRequestException, Injectable, Logger } from "@nestjs/common";
+import { createHash } from "node:crypto";
+import { BadRequestException, Inject, Injectable, Logger } from "@nestjs/common";
 import { loadStorageConfig, type StorageConfig } from "./storage.config";
+import { moduleEnabled } from "../common/feature-flags";
+import { PrismaService } from "../prisma/prisma.service";
+import { analyzeFile, assertServable, initialState, normalizeMime, SECURE_ALLOWED_MIME, transition, verdictToEvent, type FileBucket, type QuarantineState } from "./file-security";
+import { loadScanProviderFromEnv } from "./scan-provider";
 
 /** حداکثر اندازه فایل — ۲۰ مگابایت */
 export const MAX_FILE_BYTES = 20 * 1024 * 1024;
@@ -56,6 +61,8 @@ export interface DownloadUrl {
 export class StorageService {
   private readonly logger = new Logger(StorageService.name);
 
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+
   /* sdk و تنظیمات به‌صورت lazy (start-up در توسعه/تست بدون MinIO هم کار کند؛ در production main.ts پیش‌تر loadStorageConfig را fail-closed اجرا می‌کند) */
   private cfg: StorageConfig | null = null;
   /** HEAD/DELETE: از مسیر «داخلی» شبکه‌ی docker */
@@ -102,11 +109,13 @@ export class StorageService {
     if (bytes > MAX_FILE_BYTES)
       throw new BadRequestException(`حداکثر اندازه فایل ${MAX_FILE_BYTES / 1024 / 1024} مگابایت است`);
 
-    const allowed = ALLOWED_MIME[bucket] ?? [];
-    if (!allowed.includes(mime))
+    const secure = moduleEnabled("FF_M6_SMART_FILES");
+    const normalized = secure ? normalizeMime(mime) : mime;
+    const allowed = secure ? SECURE_ALLOWED_MIME[bucket] : (ALLOWED_MIME[bucket] ?? []);
+    if (!allowed.includes(normalized))
       throw new BadRequestException(`نوع فایل ${mime} مجاز نیست`);
 
-    const ext       = mime.split("/")[1]?.replace("vnd.openxmlformats-officedocument.wordprocessingml.document","docx")
+    const ext       = normalized.split("/")[1]?.replace("vnd.openxmlformats-officedocument.wordprocessingml.document","docx")
                           .replace("vnd.openxmlformats-officedocument.spreadsheetml.sheet","xlsx") ?? "bin";
     const uploadId  = randomUUID();
     const objectKey = `${bucket}/${userId}/${uploadId}.${ext}`;
@@ -139,6 +148,7 @@ export class StorageService {
     fileName:  string,
     ttlSec     = 60,
   ): Promise<DownloadUrl> {
+    await this.assertServable(objectKey);
     const client = await this.getPresignClient();
     const { getSignedUrl }    = await import("@aws-sdk/s3-request-presigner");
     const { GetObjectCommand } = await import("@aws-sdk/client-s3");
@@ -172,6 +182,75 @@ export class StorageService {
   /**
    * حذف آبجکت (مثلاً وقتی پیام حذف می‌شود)
    */
+  /** بدون اسکن تأییدشده، هیچ لینک دانلودی صادر نمی‌شود (fail-closed). */
+  private async assertServable(objectKey: string): Promise<void> {
+    if (!moduleEnabled("FF_M6_SMART_FILES")) return;
+    const row = await this.prisma.withContext({ role: "SYSTEM" }, (tx) =>
+      tx.fileAnalysis.findFirst({ where: { objectKey }, select: { state: true }, orderBy: { createdAt: "desc" } }),
+    );
+    if (!row) throw new BadRequestException({ error: "file_not_scanned" });
+    assertServable(row.state as QuarantineState);
+  }
+
+  /** مرحله ۴ (M6): تحلیل محتوا + قرنطینه + اسکن + تعیین وضعیت نهایی. */
+  async finalizeUpload(
+    bucket: FileBucket,
+    objectKey: string,
+    declaredMime: string,
+    size: number,
+  ): Promise<{ objectKey: string; state: QuarantineState; detectedMime: string }> {
+    if (!moduleEnabled("FF_M6_SMART_FILES")) throw new BadRequestException({ error: "module_disabled" });
+    if (!objectKey.startsWith(`${bucket}/`)) throw new BadRequestException({ error: "invalid_object_key" });
+
+    const client = await this.getClient();
+    const { GetObjectCommand } = await import("@aws-sdk/client-s3");
+    const obj = await client.send(new GetObjectCommand({ Bucket: this.bucketName, Key: objectKey }));
+    const body = obj.Body;
+    if (!body || typeof body.transformToByteArray !== "function") {
+      throw new BadRequestException({ error: "file_unreadable" });
+    }
+    const bytes = new Uint8Array(await body.transformToByteArray());
+
+    const decision = analyzeFile({ bytes, size, bucket, declaredMime });
+    let state: QuarantineState = initialState(decision);
+    const row = await this.prisma.withContext({ role: "SYSTEM" }, (tx) =>
+      tx.fileAnalysis.create({
+        data: {
+          objectKey,
+          sha256: createHash("sha256").update(bytes).digest("hex"),
+          mime: decision.detectedMime,
+          bytes: BigInt(size),
+          state,
+        },
+      }),
+    );
+
+    let rejectReason: string | null = null;
+    if (!decision.ok) {
+      rejectReason = decision.code;
+    } else {
+      state = transition(state, "START_SCAN");
+      const result = await loadScanProviderFromEnv().scan({
+        objectKey,
+        bucket,
+        bytes,
+        detectedMime: decision.detectedMime,
+      });
+      state = transition(state, verdictToEvent(result.verdict));
+      if (state === "REJECTED") rejectReason = result.signature ?? result.detail;
+    }
+
+    await this.prisma.withContext({ role: "SYSTEM" }, (tx) =>
+      tx.fileAnalysis.update({ where: { id: row.id }, data: { state } }),
+    );
+
+    if (state === "REJECTED") {
+      await this.deleteObject(bucket, objectKey);
+      throw new BadRequestException({ error: "file_rejected", reason: rejectReason });
+    }
+    return { objectKey, state, detectedMime: decision.detectedMime };
+  }
+
   async deleteObject(bucket: "chat" | "records", objectKey: string): Promise<void> {
     try {
       const client = await this.getClient();

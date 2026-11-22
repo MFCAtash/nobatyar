@@ -7,6 +7,7 @@ import { bookSchema, listSchema as appointmentListSchema, rescheduleSchema } fro
 import { joinSchema as waitlistJoinSchema } from "../appointments/waitlist.controller";
 import { settingsSchema as doctorSettingsSchema } from "../doctors/doctor-schedule.controller";
 import { slotsSchema as doctorSlotsSchema } from "../doctors/doctor-directory.controller";
+import { createRecurringSchema } from "../appointments/recurring.schemas";
 import { dataRequestSchema } from "../records/fhir.controller";
 import { webauthnResponseSchema } from "../auth/passkey.controller";
 import { decisionSchema, insuranceSchema, payoutSchema, settleSchema, topupSchema } from "../wallet/wallet.controller";
@@ -19,6 +20,31 @@ import { InitiateSchema, VerifySchema } from "../payment/payment.schemas";
 import { SubscribeSchema, UnsubscribeSchema } from "../push/push.schemas";
 import { AddAttachmentSchema, CreateRecordSchema, ShareSchema, UpdateRecordSchema } from "../records/records.schemas";
 import { createIncidentSchema, updateIncidentSchema } from "../status/incident.schemas";
+import { activateTemplateSchema, putPreferencesSchema } from "../notifications/preferences.schemas";
+import { quickReplySchema, summarizeSchema } from "../chat/assist.schemas";
+import { recordingConsentSchema, roomPolicySchema } from "../video/room-policy.schemas";
+import {
+  addTimelineSchema,
+  exportSchema as healthExportSchema,
+  reconcileSchema as medicationReconcileSchema,
+  timelineQuerySchema,
+} from "../patient-record/patient-record.schemas";
+import { createRuleSetSchema, evaluateSchema as triageEvaluateSchema } from "../triage-governance/ruleset.schemas";
+import { chaosSchema as autoOpsChaosSchema, putSloSchema, runbookSchema } from "../observability/slo.schemas";
+import {
+  experimentUpsertSchema,
+  feedbackSchema,
+  funnelEventSchema,
+  funnelQuerySchema,
+} from "../analytics/funnel.schemas";
+import {
+  clinicQuerySchema,
+  createClinicSchema,
+  createPlanSchema,
+  seatsQuerySchema,
+  workspaceSchema,
+} from "../growth/clinics.schemas";
+import { uiPreferencesSchema } from "../design/ui-preferences.schemas";
 import type { RouteDoc } from "./build";
 import type { JsonSchema } from "./zod-to-schema";
 
@@ -104,6 +130,9 @@ export const ROUTES: RouteDoc[] = [
   { method: "get", path: "/appointments", tag: "Appointments", summary: "فهرست نوبت‌های کاربر (cursor)", auth: "user", query: appointmentListSchema, ok: { status: 200 } },
   { method: "get", path: "/appointments/:id", tag: "Appointments", summary: "جزئیات نوبت", auth: "user", ok: { status: 200 } },
   { method: "get", path: "/appointments/:id/calendar.ics", tag: "Appointments", summary: "M3: خروجی تقویم ICS (فاقد PHI)", auth: "user", ok: { status: 200, description: "text/calendar" } },
+  { method: "post", path: "/appointments/recurring", tag: "Appointments", summary: "M3: ایجاد رزرو تکرارشونده (پشت feature flag)", auth: "patient", body: createRecurringSchema, ok: { status: 201 }, errors: { 400: "module_disabled | invalid_rrule" } },
+  { method: "get", path: "/appointments/recurring", tag: "Appointments", summary: "M3: فهرست سریهای تکرارشونده", auth: "user", ok: { status: 200 } },
+  { method: "delete", path: "/appointments/recurring/:id", tag: "Appointments", summary: "M3: لغو سری و نوبتهای آینده آن", auth: "user", ok: { status: 200 } },
   { method: "post", path: "/appointments/:id/confirm", tag: "Appointments", summary: "پزشک: تأیید نوبت", auth: "doctor", ok: { status: 200 }, errors: { 409: "invalid_transition" } },
   { method: "post", path: "/appointments/:id/cancel", tag: "Appointments", summary: "لغو نوبت (بازپرداخت طبق سیاست)", auth: "user", ok: { status: 200 }, errors: { 409: "invalid_transition" } },
   { method: "post", path: "/appointments/:id/start", tag: "Appointments", summary: "شروع ویزیت", auth: "doctor", ok: { status: 200 } },
@@ -252,4 +281,72 @@ export const ROUTES: RouteDoc[] = [
   { method: "post", path: "/demo/login", tag: "Demo", summary: "ورود خودکار دمو با نشست استاندارد", auth: "public", ok: { status: 201, schema: tokens }, errors: { 403: "demo_disabled", 404: "demo_user_missing" } },
   { method: "get", path: "/doctor/stats/daily", tag: "Analytics", summary: "آمار روزانه پزشک (Read Model)", auth: "doctor", ok: { status: 200 } },
   { method: "get", path: "/doctor/stats/summary", tag: "Analytics", summary: "خلاصه عملکرد پزشک", auth: "doctor", ok: { status: 200 } },
+  // ─── M5: اعلان چندکاناله ─────────────────────────────────────────────────
+  { method: "get", path: "/me/notification-preferences", tag: "Notifications", summary: "ماتریس ترجیحات اعلان و ساعات سکوت", auth: "user", ok: { status: 200 } },
+  { method: "put", path: "/me/notification-preferences", tag: "Notifications", summary: "به‌روزرسانی ترجیحات اعلان", auth: "user", body: putPreferencesSchema, ok: { status: 200 } },
+  { method: "get", path: "/admin/notification-templates", tag: "Admin · Notifications", summary: "فهرست قالب‌های نسخه‌دار اعلان", auth: "admin", ok: { status: 200 } },
+  { method: "post", path: "/admin/notification-templates/:key/activate", tag: "Admin · Notifications", summary: "فعال‌سازی نسخهٔ قالب", auth: "admin", body: activateTemplateSchema, ok: { status: 201 }, errors: { 404: "template_version_not_found" } },
+  { method: "get", path: "/admin/dead-letters", tag: "Admin · Notifications", summary: "صف نامه‌های مرده (DLQ)", auth: "admin", query: obj({ limit: { type: "integer" } }, []), ok: { status: 200 } },
+  { method: "post", path: "/admin/dead-letters/:id/retry", tag: "Admin · Notifications", summary: "علامت‌گذاری برای ارسال مجدد", auth: "admin", ok: { status: 201 }, errors: { 404: "not_found" } },
+
+  // ─── M7: دستیار چت ───────────────────────────────────────────────────────
+  { method: "get", path: "/me/quick-replies", tag: "Chat", summary: "پاسخ‌های سریع پزشک", auth: "doctor", ok: { status: 200 } },
+  { method: "post", path: "/me/quick-replies", tag: "Chat", summary: "افزودن پاسخ سریع", auth: "doctor", body: quickReplySchema, ok: { status: 201 }, errors: { 400: "invalid_text | quick_reply_limit" } },
+  { method: "delete", path: "/me/quick-replies/:id", tag: "Chat", summary: "حذف پاسخ سریع", auth: "doctor", ok: { status: 200 }, errors: { 404: "not_found" } },
+  { method: "post", path: "/conversations/:id/summarize", tag: "Chat", summary: "خلاصهٔ استخراجی مکالمه با رضایت بیمار", auth: "user", body: summarizeSchema, ok: { status: 201 }, errors: { 403: "consent_required" } },
+  { method: "get", path: "/conversations/:id/summary", tag: "Chat", summary: "دریافت خلاصهٔ ذخیره‌شده", auth: "user", ok: { status: 200 }, errors: { 404: "summary_not_found" } },
+
+  // ─── M8: سیاست اتاق ویدئو ────────────────────────────────────────────────
+  { method: "get", path: "/appointments/:id/video/policy", tag: "Video", summary: "سیاست اتاق و وضعیت رضایت ضبط", auth: "user", ok: { status: 200 } },
+  { method: "put", path: "/appointments/:id/video/policy", tag: "Video", summary: "به‌روزرسانی سیاست اتاق (پزشک)", auth: "user", body: roomPolicySchema, ok: { status: 200 }, errors: { 403: "doctor_only" } },
+  { method: "post", path: "/appointments/:id/video/recording-consent", tag: "Video", summary: "ثبت رضایت ضبط هر طرف", auth: "user", body: recordingConsentSchema, ok: { status: 201 }, errors: { 400: "recording_disabled" } },
+  { method: "get", path: "/appointments/:id/video/gate", tag: "Video", summary: "وضعیت اتاق انتظار", auth: "user", query: obj({ admitted: { enum: ["0", "1"] } }, []), ok: { status: 200 } },
+
+  // ─── M9: پروندهٔ بیمار ───────────────────────────────────────────────────
+  { method: "get", path: "/me/health/timeline", tag: "Patient Record", summary: "تایم‌لاین سلامت با روند", auth: "patient", query: timelineQuerySchema, ok: { status: 200 } },
+  { method: "post", path: "/me/health/timeline", tag: "Patient Record", summary: "افزودن نقطهٔ سلامت", auth: "patient", body: addTimelineSchema, ok: { status: 201 }, errors: { 400: "invalid_measurement | invalid_at" } },
+  { method: "get", path: "/me/health/medications", tag: "Patient Record", summary: "آخرین بازبینی داروها", auth: "patient", ok: { status: 200 } },
+  { method: "post", path: "/me/health/medications/reconcile", tag: "Patient Record", summary: "بازبینی داروها و هشدارهای غیرتشخیصی", auth: "patient", body: medicationReconcileSchema, ok: { status: 201 } },
+  { method: "get", path: "/me/consent-ledger", tag: "Patient Record", summary: "دفتر رضایت‌نامه‌ها و رسیدها", auth: "patient", ok: { status: 200 } },
+  { method: "post", path: "/me/health/export", tag: "Patient Record", summary: "خروجی رمزشدهٔ پرونده با کلید بیمار", auth: "patient", body: healthExportSchema, ok: { status: 201 } },
+
+  // ─── M10: حاکمیت triage ──────────────────────────────────────────────────
+  { method: "get", path: "/triage-governance/rulesets/active", tag: "Triage", summary: "نسخهٔ فعال قواعد triage", auth: "user", ok: { status: 200 } },
+  { method: "post", path: "/triage-governance/evaluate", tag: "Triage", summary: "ارزیابی توضیح‌پذیر علائم با نسخهٔ فعال", auth: "user", body: triageEvaluateSchema, ok: { status: 200 }, errors: { 404: "no_active_ruleset" } },
+  { method: "post", path: "/triage-governance/rulesets/:version/evaluate", tag: "Triage", summary: "ارزیابی با نسخهٔ مشخص", auth: "user", body: triageEvaluateSchema, ok: { status: 200 }, errors: { 404: "ruleset_not_found" } },
+  { method: "get", path: "/admin/triage-rulesets", tag: "Admin · Triage", summary: "فهرست قواعد triage", auth: "admin", ok: { status: 200 } },
+  { method: "post", path: "/admin/triage-rulesets", tag: "Admin · Triage", summary: "ایجاد قواعد (اعتبارسنجی fail-closed)", auth: "admin", body: createRuleSetSchema, ok: { status: 201 }, errors: { 400: "invalid_ruleset", 409: "version_exists" } },
+
+  // ─── M11: عملیات خودمختار ────────────────────────────────────────────────
+  { method: "get", path: "/admin/slo", tag: "Admin · Ops", summary: "بودجهٔ خطا و burn rate", auth: "admin", ok: { status: 200 } },
+  { method: "put", path: "/admin/slo/:service", tag: "Admin · Ops", summary: "تعریف/به‌روزرسانی SLO سرویس", auth: "admin", body: putSloSchema, ok: { status: 200 } },
+  { method: "get", path: "/admin/chaos", tag: "Admin · Ops", summary: "تاریخ chaos drill", auth: "admin", ok: { status: 200 } },
+  { method: "post", path: "/admin/chaos/:target", tag: "Admin · Ops", summary: "اجرای chaos با گیت‌های ایمنی", auth: "admin", body: autoOpsChaosSchema, ok: { status: 201 }, errors: { 403: "chaos_disabled_in_production | approval_required | target_not_allowed" } },
+  { method: "post", path: "/admin/runbooks", tag: "Admin · Ops", summary: "درخواست اجرای runbook", auth: "admin", body: runbookSchema, ok: { status: 200 }, errors: { 403: "unknown_runbook | production_requires_ci" } },
+  { method: "get", path: "/admin/synthetic", tag: "Admin · Ops", summary: "بررسی synthetic زنده", auth: "admin", ok: { status: 200 } },
+
+  // ─── M13: تحلیل محصول ────────────────────────────────────────────────────
+  { method: "post", path: "/analytics/funnel", tag: "Analytics", summary: "ثبت مرحلهٔ فونل (بدون PHI)", auth: "user", body: funnelEventSchema, ok: { status: 201 }, errors: { 400: "invalid_event" } },
+  { method: "get", path: "/admin/analytics/funnel", tag: "Admin · Analytics", summary: "گزارش فونل و cohort", auth: "admin", query: funnelQuerySchema, ok: { status: 200 } },
+  { method: "get", path: "/admin/analytics/cohorts", tag: "Admin · Analytics", summary: "گزارش cohort/retention", auth: "admin", query: funnelQuerySchema, ok: { status: 200 } },
+  { method: "post", path: "/me/feedback", tag: "Analytics", summary: "ثبت NPS (۰..۱۰)", auth: "user", body: feedbackSchema, ok: { status: 201 }, errors: { 400: "invalid_score" } },
+  { method: "get", path: "/me/feedback", tag: "Analytics", summary: "خلاصهٔ NPS کاربر", auth: "user", ok: { status: 200 } },
+  { method: "get", path: "/admin/analytics/experiments", tag: "Admin · Analytics", summary: "فهرست آزمایش‌ها", auth: "admin", ok: { status: 200 } },
+  { method: "put", path: "/admin/analytics/experiments/:key", tag: "Admin · Analytics", summary: "ایجاد/به‌روزرسانی آزمایش A/B", auth: "admin", body: experimentUpsertSchema, ok: { status: 200 }, errors: { 400: "invalid_key" } },
+
+  // ─── M14: اکوسیستم ───────────────────────────────────────────────────────
+  { method: "get", path: "/clinics", tag: "Growth", summary: "فهرست کلینیک‌ها با فاصله/جست‌وجو", auth: "user", query: clinicQuerySchema, ok: { status: 200 } },
+  { method: "get", path: "/me/workspace", tag: "Growth", summary: "داشبورد کاری پزشک", auth: "doctor", ok: { status: 200 } },
+  { method: "put", path: "/me/workspace", tag: "Growth", summary: "تغییر داشبورد کاری پزشک", auth: "doctor", body: workspaceSchema, ok: { status: 200 } },
+  { method: "post", path: "/admin/clinics", tag: "Admin · Growth", summary: "ثبت کلینیک", auth: "admin", body: createClinicSchema, ok: { status: 201 } },
+  { method: "patch", path: "/admin/clinics/:id/verify", tag: "Admin · Growth", summary: "تأیید کلینیک", auth: "admin", ok: { status: 200 }, errors: { 404: "not_found" } },
+  { method: "get", path: "/admin/organization-plans", tag: "Admin · Growth", summary: "طرح‌های سازمانی", auth: "admin", ok: { status: 200 } },
+  { method: "post", path: "/admin/organization-plans", tag: "Admin · Growth", summary: "ایجاد طرح سازمانی", auth: "admin", body: createPlanSchema, ok: { status: 201 } },
+  { method: "get", path: "/admin/organization-plans/:id/seats", tag: "Admin · Growth", summary: "بررسی ظرفیت صندلی", auth: "admin", query: seatsQuerySchema, ok: { status: 200 }, errors: { 400: "plan_inactive | over_capacity | invalid_usage" } },
+
+  // ─── M15: دسترس‌پذیری ────────────────────────────────────────────────────
+  { method: "get", path: "/me/ui-preferences", tag: "Design", summary: "ترجیحات ظاهر/دسترس‌پذیری", auth: "user", ok: { status: 200 } },
+  { method: "put", path: "/me/ui-preferences", tag: "Design", summary: "به‌روزرسانی ترجیحات ظاهر/دسترس‌پذیری", auth: "user", body: uiPreferencesSchema, ok: { status: 200 } },
+  // ─── M6: خط لوله امن فایل ────────────────────────────────────────────────
+  { method: "post", path: "/storage/finalize", tag: "Storage", summary: "تحلیل، قرنطینه و اسکن فایل آپلودشده (فقط APPROVED قابل ارائه)", auth: "user", body: obj({ bucket: { enum: ["chat", "records"] }, objectKey: str(), mime: str(), bytes: { type: "integer", minimum: 1 } }), ok: { status: 201, schema: obj({ objectKey: str(), state: { enum: ["PENDING", "SCANNING", "APPROVED", "REJECTED"] }, detectedMime: str() }) }, errors: { 400: "module_disabled | file_rejected | file_not_scanned" } },
 ];

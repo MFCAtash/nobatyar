@@ -311,3 +311,10 @@ migrations نسخهدار در Git و بدون تغییر دستی DB؛ قید �
 - «همهٔ موارد امنیتی/زیرساختی»،
 - یا «همهٔ موارد تجربهٔبیمار»،
 - یا ترکیبی دلخواه (مثلاً M1+M3+M5+M13) انتخاب کنید.
+
+
+---
+
+## Update 2026-11-22 - all M1-M15 modules delivered
+
+All 15 enhancement modules are implemented and verified (typecheck, 711 API tests, 178 web tests, OpenAPI 206 operations with 100% coverage, builds, E2E 5/5). See FINAL-DELIVERY-REPORT.md. Feature flags are off by default.

@@ -11,6 +11,228 @@
     }
   ],
   "paths": {
+    "/admin/analytics/cohorts": {
+      "get": {
+        "tags": [
+          "Admin · Analytics"
+        ],
+        "summary": "گزارش cohort/retention",
+        "operationId": "getAdminAnalyticsCohorts",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "maxWeeks",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 26
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "x-roles": [
+          "ADMIN"
+        ]
+      }
+    },
+    "/admin/analytics/experiments": {
+      "get": {
+        "tags": [
+          "Admin · Analytics"
+        ],
+        "summary": "فهرست آزمایش‌ها",
+        "operationId": "getAdminAnalyticsExperiments",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "x-roles": [
+          "ADMIN"
+        ]
+      }
+    },
+    "/admin/analytics/experiments/{key}": {
+      "put": {
+        "tags": [
+          "Admin · Analytics"
+        ],
+        "summary": "ایجاد/به‌روزرسانی آزمایش A/B",
+        "operationId": "putAdminAnalyticsExperimentsKey",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "variants": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 40
+                    },
+                    "minItems": 1,
+                    "maxItems": 10
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "variants",
+                  "enabled"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "400": {
+            "description": "invalid_key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "x-roles": [
+          "ADMIN"
+        ]
+      }
+    },
+    "/admin/analytics/funnel": {
+      "get": {
+        "tags": [
+          "Admin · Analytics"
+        ],
+        "summary": "گزارش فونل و cohort",
+        "operationId": "getAdminAnalyticsFunnel",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "maxWeeks",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 26
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "x-roles": [
+          "ADMIN"
+        ]
+      }
+    },
     "/admin/audit/verify": {
       "get": {
         "tags": [
@@ -66,6 +288,249 @@
           },
           "403": {
             "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "x-roles": [
+          "ADMIN"
+        ]
+      }
+    },
+    "/admin/chaos": {
+      "get": {
+        "tags": [
+          "Admin · Ops"
+        ],
+        "summary": "تاریخ chaos drill",
+        "operationId": "getAdminChaos",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "x-roles": [
+          "ADMIN"
+        ]
+      }
+    },
+    "/admin/chaos/{target}": {
+      "post": {
+        "tags": [
+          "Admin · Ops"
+        ],
+        "summary": "اجرای chaos با گیت‌های ایمنی",
+        "operationId": "postAdminChaosTarget",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "target",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "approved": {
+                    "type": "boolean"
+                  },
+                  "windowFrom": {
+                    "type": "string",
+                    "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                  },
+                  "windowTo": {
+                    "type": "string",
+                    "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                  }
+                },
+                "required": [
+                  "approved"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "موفق"
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "chaos_disabled_in_production | approval_required | target_not_allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "ADMIN"
+        ]
+      }
+    },
+    "/admin/clinics": {
+      "post": {
+        "tags": [
+          "Admin · Growth"
+        ],
+        "summary": "ثبت کلینیک",
+        "operationId": "postAdminClinics",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120
+                  },
+                  "addressFa": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 300
+                  },
+                  "phone": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 30
+                  },
+                  "geoLat": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": -90,
+                        "maximum": 90
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "geoLng": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": -180,
+                        "maximum": 180
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "verified": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "name",
+                  "addressFa",
+                  "phone"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "موفق"
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "x-roles": [
+          "ADMIN"
+        ]
+      }
+    },
+    "/admin/clinics/{id}/verify": {
+      "patch": {
+        "tags": [
+          "Admin · Growth"
+        ],
+        "summary": "تأیید کلینیک",
+        "operationId": "patchAdminClinicsIdVerify",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "x-roles": [
@@ -203,6 +668,83 @@
         ]
       }
     },
+    "/admin/dead-letters": {
+      "get": {
+        "tags": [
+          "Admin · Notifications"
+        ],
+        "summary": "صف نامه‌های مرده (DLQ)",
+        "operationId": "getAdminDead-letters",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "x-roles": [
+          "ADMIN"
+        ]
+      }
+    },
+    "/admin/dead-letters/{id}/retry": {
+      "post": {
+        "tags": [
+          "Admin · Notifications"
+        ],
+        "summary": "علامت‌گذاری برای ارسال مجدد",
+        "operationId": "postAdminDead-lettersIdRetry",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "موفق"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "ADMIN"
+        ]
+      }
+    },
     "/admin/doctor-verifications": {
       "get": {
         "tags": [
@@ -324,6 +866,248 @@
         "responses": {
           "200": {
             "description": "موفق"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "x-roles": [
+          "ADMIN"
+        ]
+      }
+    },
+    "/admin/notification-templates": {
+      "get": {
+        "tags": [
+          "Admin · Notifications"
+        ],
+        "summary": "فهرست قالب‌های نسخه‌دار اعلان",
+        "operationId": "getAdminNotification-templates",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "x-roles": [
+          "ADMIN"
+        ]
+      }
+    },
+    "/admin/notification-templates/{key}/activate": {
+      "post": {
+        "tags": [
+          "Admin · Notifications"
+        ],
+        "summary": "فعال‌سازی نسخهٔ قالب",
+        "operationId": "postAdminNotification-templatesKeyActivate",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "version"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "موفق"
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "template_version_not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "ADMIN"
+        ]
+      }
+    },
+    "/admin/organization-plans": {
+      "get": {
+        "tags": [
+          "Admin · Growth"
+        ],
+        "summary": "طرح‌های سازمانی",
+        "operationId": "getAdminOrganization-plans",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "x-roles": [
+          "ADMIN"
+        ]
+      },
+      "post": {
+        "tags": [
+          "Admin · Growth"
+        ],
+        "summary": "ایجاد طرح سازمانی",
+        "operationId": "postAdminOrganization-plans",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 80
+                  },
+                  "seats": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100000
+                  }
+                },
+                "required": [
+                  "name",
+                  "seats"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "موفق"
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "x-roles": [
+          "ADMIN"
+        ]
+      }
+    },
+    "/admin/organization-plans/{id}/seats": {
+      "get": {
+        "tags": [
+          "Admin · Growth"
+        ],
+        "summary": "بررسی ظرفیت صندلی",
+        "operationId": "getAdminOrganization-plansIdSeats",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "used",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "400": {
+            "description": "plan_inactive | over_capacity | invalid_usage",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -3101,6 +3885,167 @@
         ]
       }
     },
+    "/admin/runbooks": {
+      "post": {
+        "tags": [
+          "Admin · Ops"
+        ],
+        "summary": "درخواست اجرای runbook",
+        "operationId": "postAdminRunbooks",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "enum": [
+                      "restore-drill",
+                      "redis-failover",
+                      "payment-failover"
+                    ]
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "unknown_runbook | production_requires_ci",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "ADMIN"
+        ]
+      }
+    },
+    "/admin/slo": {
+      "get": {
+        "tags": [
+          "Admin · Ops"
+        ],
+        "summary": "بودجهٔ خطا و burn rate",
+        "operationId": "getAdminSlo",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "x-roles": [
+          "ADMIN"
+        ]
+      }
+    },
+    "/admin/slo/{service}": {
+      "put": {
+        "tags": [
+          "Admin · Ops"
+        ],
+        "summary": "تعریف/به‌روزرسانی SLO سرویس",
+        "operationId": "putAdminSloService",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "service",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "objective": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "exclusiveMaximum": 100
+                  },
+                  "window": {
+                    "type": "string",
+                    "enum": [
+                      "30d",
+                      "7d",
+                      "1d"
+                    ]
+                  }
+                },
+                "required": [
+                  "objective",
+                  "window"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "x-roles": [
+          "ADMIN"
+        ]
+      }
+    },
     "/admin/status/incidents": {
       "get": {
         "tags": [
@@ -3322,6 +4267,180 @@
           },
           "409": {
             "description": "incident_resolved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "ADMIN"
+        ]
+      }
+    },
+    "/admin/synthetic": {
+      "get": {
+        "tags": [
+          "Admin · Ops"
+        ],
+        "summary": "بررسی synthetic زنده",
+        "operationId": "getAdminSynthetic",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "x-roles": [
+          "ADMIN"
+        ]
+      }
+    },
+    "/admin/triage-rulesets": {
+      "get": {
+        "tags": [
+          "Admin · Triage"
+        ],
+        "summary": "فهرست قواعد triage",
+        "operationId": "getAdminTriage-rulesets",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "x-roles": [
+          "ADMIN"
+        ]
+      },
+      "post": {
+        "tags": [
+          "Admin · Triage"
+        ],
+        "summary": "ایجاد قواعد (اعتبارسنجی fail-closed)",
+        "operationId": "postAdminTriage-rulesets",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "string",
+                    "pattern": "^\\d+\\.\\d+\\.\\d+$"
+                  },
+                  "rules": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 60
+                        },
+                        "anyOf": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          },
+                          "minItems": 1,
+                          "maxItems": 20
+                        },
+                        "level": {
+                          "type": "string",
+                          "enum": [
+                            "EMERGENCY",
+                            "URGENT",
+                            "ROUTINE"
+                          ]
+                        },
+                        "explanationFa": {
+                          "type": "string",
+                          "minLength": 10,
+                          "maxLength": 500
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "anyOf",
+                        "level",
+                        "explanationFa"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1,
+                    "maxItems": 100
+                  },
+                  "approvedByLabel": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120
+                  }
+                },
+                "required": [
+                  "version",
+                  "rules",
+                  "approvedByLabel"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "موفق"
+          },
+          "400": {
+            "description": "invalid_ruleset",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "description": "version_exists",
             "content": {
               "application/json": {
                 "schema": {
@@ -3559,6 +4678,87 @@
         "x-roles": [
           "ADMIN"
         ]
+      }
+    },
+    "/analytics/funnel": {
+      "post": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "ثبت مرحلهٔ فونل (بدون PHI)",
+        "operationId": "postAnalyticsFunnel",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "step": {
+                    "type": "string",
+                    "enum": [
+                      "SEARCH",
+                      "SLOT_VIEW",
+                      "SLOT_SELECT",
+                      "PAYMENT_START",
+                      "PAYMENT_SUCCESS",
+                      "BOOKING_CONFIRMED"
+                    ]
+                  },
+                  "anonymousId": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 200
+                  },
+                  "meta": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "step",
+                  "anonymousId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "موفق"
+          },
+          "400": {
+            "description": "invalid_event",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
       }
     },
     "/appointments": {
@@ -4838,6 +6038,215 @@
         }
       }
     },
+    "/appointments/{id}/video/gate": {
+      "get": {
+        "tags": [
+          "Video"
+        ],
+        "summary": "وضعیت اتاق انتظار",
+        "operationId": "getAppointmentsIdVideoGate",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/appointments/{id}/video/policy": {
+      "get": {
+        "tags": [
+          "Video"
+        ],
+        "summary": "سیاست اتاق و وضعیت رضایت ضبط",
+        "operationId": "getAppointmentsIdVideoPolicy",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Video"
+        ],
+        "summary": "به‌روزرسانی سیاست اتاق (پزشک)",
+        "operationId": "putAppointmentsIdVideoPolicy",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "waitingRoom": {
+                    "type": "boolean"
+                  },
+                  "allowScreenShare": {
+                    "type": "boolean"
+                  },
+                  "captions": {
+                    "type": "boolean"
+                  },
+                  "recordConsent": {
+                    "type": "boolean"
+                  },
+                  "retentionHours": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 720
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "doctor_only",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/appointments/{id}/video/recording-consent": {
+      "post": {
+        "tags": [
+          "Video"
+        ],
+        "summary": "ثبت رضایت ضبط هر طرف",
+        "operationId": "postAppointmentsIdVideoRecording-consent",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "accept": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "accept"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "موفق"
+          },
+          "400": {
+            "description": "recording_disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
     "/appointments/{id}/video/token": {
       "post": {
         "tags": [
@@ -4878,6 +6287,137 @@
         ],
         "summary": "خلاصه ویزیت منتشرشده",
         "operationId": "getAppointmentsIdVisit-summary",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/appointments/recurring": {
+      "post": {
+        "tags": [
+          "Appointments"
+        ],
+        "summary": "M3: ایجاد رزرو تکرارشونده (پشت feature flag)",
+        "operationId": "postAppointmentsRecurring",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "doctorId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "rrule": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 120
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "IN_PERSON",
+                      "VIDEO",
+                      "CHAT"
+                    ],
+                    "default": "VIDEO"
+                  },
+                  "firstStartsAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                },
+                "required": [
+                  "doctorId",
+                  "rrule",
+                  "firstStartsAt"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "موفق"
+          },
+          "400": {
+            "description": "module_disabled | invalid_rrule",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "x-roles": [
+          "PATIENT"
+        ]
+      },
+      "get": {
+        "tags": [
+          "Appointments"
+        ],
+        "summary": "M3: فهرست سریهای تکرارشونده",
+        "operationId": "getAppointmentsRecurring",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/appointments/recurring/{id}": {
+      "delete": {
+        "tags": [
+          "Appointments"
+        ],
+        "summary": "M3: لغو سری و نوبتهای آینده آن",
+        "operationId": "deleteAppointmentsRecurringId",
         "security": [
           {
             "bearerAuth": []
@@ -5572,6 +7112,91 @@
         }
       }
     },
+    "/clinics": {
+      "get": {
+        "tags": [
+          "Growth"
+        ],
+        "summary": "فهرست کلینیک‌ها با فاصله/جست‌وجو",
+        "operationId": "getClinics",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "lat",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "minimum": -90,
+              "maximum": 90
+            }
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180
+            }
+          },
+          {
+            "name": "maxKm",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 2000
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 80
+            }
+          },
+          {
+            "name": "verifiedOnly",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "0",
+                "1"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
     "/conversations": {
       "get": {
         "tags": [
@@ -5623,6 +7248,115 @@
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/conversations/{id}/summarize": {
+      "post": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "خلاصهٔ استخراجی مکالمه با رضایت بیمار",
+        "operationId": "postConversationsIdSummarize",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "consentId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "consentId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "موفق"
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "consent_required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/conversations/{id}/summary": {
+      "get": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "دریافت خلاصهٔ ذخیره‌شده",
+        "operationId": "getConversationsIdSummary",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "summary_not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -6300,6 +8034,34 @@
         }
       }
     },
+    "/me/consent-ledger": {
+      "get": {
+        "tags": [
+          "Patient Record"
+        ],
+        "summary": "دفتر رضایت‌نامه‌ها و رسیدها",
+        "operationId": "getMeConsent-ledger",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "x-roles": [
+          "PATIENT"
+        ]
+      }
+    },
     "/me/consents": {
       "post": {
         "tags": [
@@ -6813,6 +8575,95 @@
         ]
       }
     },
+    "/me/feedback": {
+      "post": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "ثبت NPS (۰..۱۰)",
+        "operationId": "postMeFeedback",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "score": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10
+                  },
+                  "step": {
+                    "type": "string",
+                    "enum": [
+                      "SEARCH",
+                      "SLOT_VIEW",
+                      "SLOT_SELECT",
+                      "PAYMENT_START",
+                      "PAYMENT_SUCCESS",
+                      "BOOKING_CONFIRMED"
+                    ]
+                  },
+                  "anonymousId": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 200
+                  }
+                },
+                "required": [
+                  "score"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "موفق"
+          },
+          "400": {
+            "description": "invalid_score",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "خلاصهٔ NPS کاربر",
+        "operationId": "getMeFeedback",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
     "/me/health-profile": {
       "get": {
         "tags": [
@@ -6895,6 +8746,301 @@
                 }
               }
             }
+          }
+        },
+        "x-roles": [
+          "PATIENT"
+        ]
+      }
+    },
+    "/me/health/export": {
+      "post": {
+        "tags": [
+          "Patient Record"
+        ],
+        "summary": "خروجی رمزشدهٔ پرونده با کلید بیمار",
+        "operationId": "postMeHealthExport",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "passphrase": {
+                    "type": "string",
+                    "minLength": 12,
+                    "maxLength": 200
+                  }
+                },
+                "required": [
+                  "passphrase"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "موفق"
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "x-roles": [
+          "PATIENT"
+        ]
+      }
+    },
+    "/me/health/medications": {
+      "get": {
+        "tags": [
+          "Patient Record"
+        ],
+        "summary": "آخرین بازبینی داروها",
+        "operationId": "getMeHealthMedications",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "x-roles": [
+          "PATIENT"
+        ]
+      }
+    },
+    "/me/health/medications/reconcile": {
+      "post": {
+        "tags": [
+          "Patient Record"
+        ],
+        "summary": "بازبینی داروها و هشدارهای غیرتشخیصی",
+        "operationId": "postMeHealthMedicationsReconcile",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "minLength": 2,
+                          "maxLength": 120
+                        },
+                        "dose": {
+                          "type": "string",
+                          "maxLength": 60
+                        },
+                        "note": {
+                          "type": "string",
+                          "maxLength": 200
+                        }
+                      },
+                      "required": [
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "maxItems": 50
+                  },
+                  "reviewedBy": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "items"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "موفق"
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "x-roles": [
+          "PATIENT"
+        ]
+      }
+    },
+    "/me/health/timeline": {
+      "get": {
+        "tags": [
+          "Patient Record"
+        ],
+        "summary": "تایم‌لاین سلامت با روند",
+        "operationId": "getMeHealthTimeline",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "WEIGHT",
+                "BP",
+                "GLUCOSE",
+                "LAB"
+              ]
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "x-roles": [
+          "PATIENT"
+        ]
+      },
+      "post": {
+        "tags": [
+          "Patient Record"
+        ],
+        "summary": "افزودن نقطهٔ سلامت",
+        "operationId": "postMeHealthTimeline",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "WEIGHT",
+                      "BP",
+                      "GLUCOSE",
+                      "LAB"
+                    ]
+                  },
+                  "value": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 32
+                  },
+                  "unit": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 16
+                  },
+                  "at": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "value"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "موفق"
+          },
+          "400": {
+            "description": "invalid_measurement | invalid_at",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
           }
         },
         "x-roles": [
@@ -7237,6 +9383,128 @@
         }
       }
     },
+    "/me/notification-preferences": {
+      "get": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "ماتریس ترجیحات اعلان و ساعات سکوت",
+        "operationId": "getMeNotification-preferences",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "به‌روزرسانی ترجیحات اعلان",
+        "operationId": "putMeNotification-preferences",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "eventType": {
+                          "type": "string",
+                          "enum": [
+                            "APPOINTMENT_REMINDER",
+                            "APPOINTMENT_CONFIRMED",
+                            "APPOINTMENT_CANCELLED",
+                            "PAYMENT",
+                            "CHAT",
+                            "SECOND_OPINION",
+                            "SECURITY"
+                          ]
+                        },
+                        "channel": {
+                          "type": "string",
+                          "enum": [
+                            "inapp",
+                            "sms",
+                            "push",
+                            "email"
+                          ]
+                        },
+                        "enabled": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "eventType",
+                        "channel",
+                        "enabled"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "maxItems": 200
+                  },
+                  "quietFrom": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "quietTo": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "items"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
     "/me/profile": {
       "patch": {
         "tags": [
@@ -7281,6 +9549,311 @@
             "$ref": "#/components/responses/Unauthorized"
           }
         }
+      }
+    },
+    "/me/quick-replies": {
+      "get": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "پاسخ‌های سریع پزشک",
+        "operationId": "getMeQuick-replies",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "x-roles": [
+          "DOCTOR"
+        ]
+      },
+      "post": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "افزودن پاسخ سریع",
+        "operationId": "postMeQuick-replies",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "text"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "موفق"
+          },
+          "400": {
+            "description": "invalid_text | quick_reply_limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "x-roles": [
+          "DOCTOR"
+        ]
+      }
+    },
+    "/me/quick-replies/{id}": {
+      "delete": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "حذف پاسخ سریع",
+        "operationId": "deleteMeQuick-repliesId",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "DOCTOR"
+        ]
+      }
+    },
+    "/me/ui-preferences": {
+      "get": {
+        "tags": [
+          "Design"
+        ],
+        "summary": "ترجیحات ظاهر/دسترس‌پذیری",
+        "operationId": "getMeUi-preferences",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Design"
+        ],
+        "summary": "به‌روزرسانی ترجیحات ظاهر/دسترس‌پذیری",
+        "operationId": "putMeUi-preferences",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "theme": {
+                    "type": "string",
+                    "enum": [
+                      "system",
+                      "light",
+                      "dark",
+                      "high-contrast"
+                    ]
+                  },
+                  "fontScale": {
+                    "type": "number",
+                    "minimum": 0.85,
+                    "maximum": 1.5
+                  },
+                  "contrast": {
+                    "type": "string",
+                    "enum": [
+                      "normal",
+                      "more",
+                      "most"
+                    ]
+                  },
+                  "reducedMotion": {
+                    "type": "boolean"
+                  },
+                  "locale": {
+                    "type": "string",
+                    "enum": [
+                      "fa",
+                      "en"
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/me/workspace": {
+      "get": {
+        "tags": [
+          "Growth"
+        ],
+        "summary": "داشبورد کاری پزشک",
+        "operationId": "getMeWorkspace",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "x-roles": [
+          "DOCTOR"
+        ]
+      },
+      "put": {
+        "tags": [
+          "Growth"
+        ],
+        "summary": "تغییر داشبورد کاری پزشک",
+        "operationId": "putMeWorkspace",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "dashboard": {
+                    "type": "string",
+                    "enum": [
+                      "CLINIC",
+                      "TELEHEALTH",
+                      "RESEARCH"
+                    ]
+                  }
+                },
+                "required": [
+                  "dashboard"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "x-roles": [
+          "DOCTOR"
+        ]
       }
     },
     "/notifications": {
@@ -8662,6 +11235,74 @@
         }
       }
     },
+    "/storage/finalize": {
+      "post": {
+        "tags": [
+          "Storage"
+        ],
+        "summary": "تحلیل، قرنطینه و اسکن فایل آپلودشده (فقط APPROVED قابل ارائه)",
+        "operationId": "postStorageFinalize",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "موفق",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "objectKey": {
+                      "type": "string"
+                    },
+                    "state": {
+                      "enum": [
+                        "PENDING",
+                        "SCANNING",
+                        "APPROVED",
+                        "REJECTED"
+                      ]
+                    },
+                    "detectedMime": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "objectKey",
+                    "state",
+                    "detectedMime"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "module_disabled | file_rejected | file_not_scanned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
     "/storage/upload-token": {
       "post": {
         "tags": [
@@ -8710,6 +11351,158 @@
         "x-roles": [
           "PATIENT"
         ]
+      }
+    },
+    "/triage-governance/evaluate": {
+      "post": {
+        "tags": [
+          "Triage"
+        ],
+        "summary": "ارزیابی توضیح‌پذیر علائم با نسخهٔ فعال",
+        "operationId": "postTriage-governanceEvaluate",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "symptoms": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 120
+                    },
+                    "maxItems": 30
+                  }
+                },
+                "required": [
+                  "symptoms"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "no_active_ruleset",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/triage-governance/rulesets/{version}/evaluate": {
+      "post": {
+        "tags": [
+          "Triage"
+        ],
+        "summary": "ارزیابی با نسخهٔ مشخص",
+        "operationId": "postTriage-governanceRulesetsVersionEvaluate",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "symptoms": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 120
+                    },
+                    "maxItems": 30
+                  }
+                },
+                "required": [
+                  "symptoms"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "ruleset_not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/triage-governance/rulesets/active": {
+      "get": {
+        "tags": [
+          "Triage"
+        ],
+        "summary": "نسخهٔ فعال قواعد triage",
+        "operationId": "getTriage-governanceRulesetsActive",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "موفق"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
       }
     },
     "/triage/catalog": {

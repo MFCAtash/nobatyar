@@ -7,11 +7,13 @@ import { NotificationHub } from "./notification-hub";
 import { NotificationStreamService } from "./notification-stream.service";
 import { NotificationService } from "./notification.service";
 import { loadSseConfig, SSE_CONFIG } from "./sse-config";
+import { NotificationAdminController, NotificationPreferencesController } from "./preferences.controller";
+import { NotificationPreferencesService } from "./preferences.service";
 
 /** RedisModule سراسری است (PUBSUB_PUBLISHER / PUBSUB_SUBSCRIBER را export می‌کند). */
 @Module({
   imports: [PrismaModule],
-  controllers: [NotificationController],
+  controllers: [NotificationController, NotificationPreferencesController, NotificationAdminController],
   providers: [
     // تنظیمات نامعتبر ⇒ بوت متوقف می‌شود (مثل loadAuthConfig)
     { provide: SSE_CONFIG, useFactory: () => loadSseConfig() },
@@ -22,6 +24,7 @@ import { loadSseConfig, SSE_CONFIG } from "./sse-config";
     },
     NotificationService,
     NotificationStreamService,
+    NotificationPreferencesService,
   ],
   exports: [NotificationService],
 })

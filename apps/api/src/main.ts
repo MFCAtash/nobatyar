@@ -11,6 +11,7 @@ import { describePaymentConfig, loadPaymentConfig } from "./payment/payment.conf
 import { loadSentryConfig } from "./observability/sentry.config";
 import { initSentry } from "./observability/sentry";
 import { loadStorageConfig } from "./storage/storage.config";
+import { describeKmsConfig, loadKmsConfig } from "./crypto/kms/kms.config";
 
 async function bootstrap() {
   const cfg = loadAuthConfig(); // پیش از ساخت اپ: تنظیمات نامعتبر ⇒ توقف فوری
@@ -19,6 +20,8 @@ async function bootstrap() {
   new Logger("bootstrap").log(describePaymentConfig(payCfg));
   // ذخیره‌ساز فایل (fail-closed در production): نبود MinIO/آدرس عمومی/کلید محدود ⇒ همین‌جا throw (نه خطا در اولین آپلود کاربر)
   if (process.env.NODE_ENV === "production") loadStorageConfig();
+  // KMS (fail-closed): در production نبود Vault/ARN معتبر ⇒ توقف فوری پیش از سرو ترافیک
+  new Logger("bootstrap").log(describeKmsConfig(loadKmsConfig()));
   // مانیتورینگ خطا (Sentry) با scrubbing اجباری؛ بدون SENTRY_DSN کاملاً خاموش
   if (await initSentry(loadSentryConfig())) new Logger("bootstrap").log("sentry: on (scrubbed)");
   // لاگ ساخت‌یافته (JSON یک‌خطی، scrub شده، با trace_id) برای Loki؛ LOG_FORMAT=text فقط برای توسعه‌ی محلی

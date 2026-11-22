@@ -7,6 +7,7 @@ import { useTheme } from "@/components/ThemeProvider";
 import { formatBadgeCount, formatNumber } from "@/lib/format";
 import { useAuth } from "@/lib/auth-context";
 import { useNotifications } from "@/lib/use-notifications";
+import { moduleEnabled } from "@/components/system/ModuleGate";
 
 interface NavItem { href: string; label: string; exact?: boolean; group: string }
 
@@ -26,6 +27,10 @@ const PATIENT: NavItem[] = [
   { href: "/support", label: "پشتیبانی", group: "خدمات" },
   { href: "/wallet", label: "کیف پول", group: "حساب" },
   { href: "/security", label: "امنیت و Passkey", group: "حساب" },
+  ...(moduleEnabled("FF_M9_PATIENT_RECORD") ? [{ href: "/health/record", label: "پروندهٔ من (تایم لاین)", group: "پرونده من" }] : []),
+  ...(moduleEnabled("FF_M10_TRIAGE_GOV") ? [{ href: "/triage/ruleset", label: "قواعد ارزیابی", group: "خدمات" }] : []),
+  ...(moduleEnabled("FF_M14_ECOSYSTEM") ? [{ href: "/growth/clinics", label: "کلینیک‌ها", group: "خدمات" }] : []),
+  ...(moduleEnabled("FF_M15_WCAG") || moduleEnabled("FF_M5_NOTIF_ORCHESTRATOR") ? [{ href: "/settings/preferences", label: "تنظیمات من", group: "حساب" }] : []),
 ];
 const DOCTOR: NavItem[] = [
   { href: "/doctor", label: "پنل پزشک", exact: true, group: "کار من" },
@@ -33,6 +38,9 @@ const DOCTOR: NavItem[] = [
   { href: "/prescriptions", label: "نسخه‌ها", group: "کار من" },
   { href: "/second-opinions", label: "نظر دوم", group: "کار من" },
   { href: "/vitals", label: "پایش از راه دور", group: "کار من" },
+  ...(moduleEnabled("FF_M7_CHAT_ASSIST") ? [{ href: "/chat/assist", label: "دستیار چت", group: "کار من" }] : []),
+  ...(moduleEnabled("FF_M8_VIDEO_SMART") ? [{ href: "/video/policy", label: "سیاست ویدئو", group: "کار من" }] : []),
+  ...(moduleEnabled("FF_M14_ECOSYSTEM") ? [{ href: "/growth/clinics", label: "فضای کاری و کلینیک‌ها", group: "کار من" }] : []),
 ];
 const ADMIN: NavItem[] = [
   { href: "/admin/verifications", label: "تأیید پزشکان", group: "مدیریت" },
@@ -40,6 +48,8 @@ const ADMIN: NavItem[] = [
   { href: "/admin/payments", label: "پرداخت‌ها", group: "مدیریت" },
   { href: "/admin/security", label: "امنیت حساب", group: "مدیریت" },
   { href: "/admin/data-requests", label: "درخواستهای حریم خصوصی", group: "مدیریت" },
+  ...(moduleEnabled("FF_M11_AUTO_OPS") ? [{ href: "/admin/ops", label: "عملیات و SLO", group: "مدیریت" }] : []),
+  ...(moduleEnabled("FF_M13_PRODUCT_ANALYTICS") ? [{ href: "/admin/analytics", label: "تحلیل محصول", group: "مدیریت" }] : []),
 ];
 
 /** B1: ناوبری گروهی — ۳ لینک اصلی + drawer قابلدسترس برای بقیه. */

@@ -19,6 +19,7 @@
     "infra:down": "docker compose down",
     "infra:reset": "docker compose down -v && docker compose up -d --wait",
     "e2e": "pnpm --filter @nobatyar/e2e e2e",
+    "quality:all": "pnpm -r typecheck && pnpm -r test && pnpm --filter @nobatyar/api openapi:check",
     "vapid": "node scripts/gen-vapid.mjs"
   },
   "devDependencies": {

@@ -5,14 +5,17 @@ import { HttpObservabilityInterceptor } from "./http.interceptor";
 import { loadOpsConfig, OPS_CONFIG } from "./ops.config";
 import { OpsController } from "./ops.controller";
 import { SentryExceptionFilter } from "./sentry.filter";
+import { AutoOpsAdminController } from "./slo.controller";
+import { AutoOpsService } from "./slo.service";
 
 @Module({
   imports: [PrismaModule],
-  controllers: [OpsController],
+  controllers: [OpsController, AutoOpsAdminController],
   providers: [
     { provide: OPS_CONFIG, useFactory: () => loadOpsConfig() }, // METRICS_TOKEN/ACCESS_LOG نامعتبر ⇒ اپ بالا نمی‌آید
     { provide: APP_FILTER, useClass: SentryExceptionFilter },
     { provide: APP_INTERCEPTOR, useClass: HttpObservabilityInterceptor },
+    AutoOpsService,
   ],
 })
 export class ObservabilityModule {}

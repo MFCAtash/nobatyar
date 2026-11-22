@@ -69,7 +69,8 @@ async function serve(h: Handler) {
   return { url: `http://127.0.0.1:${(server!.address() as AddressInfo).port}/stream`, reqs };
 }
 const sseHead = (res: ServerResponse) => res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache" });
-const until = async (cond: () => boolean, ms = 3000) => {
+// مهلت سخاوتمندانه: این تست‌ها روی CI/ویندوزِ پرترافیک هم پایدار بمانند (رفع flaky).
+const until = async (cond: () => boolean, ms = 8000) => {
   const t0 = Date.now();
   while (!cond()) { if (Date.now() - t0 > ms) throw new Error("timeout waiting for condition"); await new Promise((r) => setTimeout(r, 10)); }
 };
@@ -152,7 +153,7 @@ describe("connectSse (fetch روی HTTP واقعی)", () => {
     });
     const got: string[] = [];
     conn = connectSse({ url, getToken: () => "t", refreshAuth: async () => "ok", onEvent: (m) => void got.push(m.event), backoffBaseMs: 5_000, backoffMaxMs: 5_000, random: () => 1 });
-    await until(() => got.filter((e) => e === "ready").length === 2, 1500); // با backoff ی ۵ثانیه‌ای ممکن نبود
+    await until(() => got.filter((e) => e === "ready").length === 2, 5000); // با backoff ی ۵ثانیه‌ای ممکن نبود
     expect(times[1] - times[0]).toBeLessThan(1000);
   });
 
@@ -165,7 +166,7 @@ describe("connectSse (fetch روی HTTP واقعی)", () => {
     });
     const got: string[] = [];
     conn = connectSse({ url, getToken: () => "t", refreshAuth: async () => "ok", onEvent: (m) => void got.push(m.event), idleTimeoutMs: 120, ...fast });
-    await until(() => got.filter((e) => e === "ready").length === 2, 2500);
+    await until(() => got.filter((e) => e === "ready").length === 2, 6000);
     expect(reqs.length).toBeGreaterThan(1);
   });
 

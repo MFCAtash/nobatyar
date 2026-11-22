@@ -38,10 +38,16 @@ import { ScribeModule } from "./scribe/scribe.module";
 import { FhirModule } from "./records/fhir.module";
 import { WalletModule } from "./wallet/wallet.module";
 import { AnalyticsModule } from "./analytics/analytics.module";
+import { KmsModule } from "./crypto/kms/kms.module";
+import { TriageGovernanceModule } from "./triage-governance/triage-governance.module";
+import { GrowthModule } from "./growth/growth.module";
+import { DesignModule } from "./design/design.module";
 
 @Module({
   imports: [
     ConfigModule, SchedulingModule, CryptoModule, PrismaModule, AuditModule, RedisModule, SmsModule, IdempotencyModule, OutboxModule, StatusModule,
+    // KMS (Vault Transit): fail-closed در production؛ در dev به FIELD_KEYS برمیگردد.
+    KmsModule,
     AuthModule, MeModule, DoctorsModule, AppointmentsModule, JobsModule, AdminModule,
     PaymentModule,
     PushModule,
@@ -59,6 +65,8 @@ import { AnalyticsModule } from "./analytics/analytics.module";
     HealthProfileModule, TriageModule, SoapModule, PrescriptionModule, SecondOpinionModule,
     // فاز ۱۹
     VitalsModule, ScribeModule, FhirModule, WalletModule, AnalyticsModule,
+    // M10/M14/M15 (ارتقا)
+    TriageGovernanceModule, GrowthModule, DesignModule,
   ],
   controllers: [HealthController],
 })

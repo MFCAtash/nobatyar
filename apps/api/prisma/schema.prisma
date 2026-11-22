@@ -309,6 +309,8 @@ model Appointment {
   reasonEnc        Bytes?            @map("reason_enc") // HEALTH — رمزنگاری‌شده
   priceRial        BigInt            @map("price_rial")
   holdExpiresAt    DateTime?         @map("hold_expires_at") @db.Timestamptz
+  /// M3: شناسهٔ سری رزرو تکرارشونده (برای لغو گروهی)
+  seriesId         String?           @map("series_id") @db.Uuid
   reminder24SentAt DateTime?         @map("reminder_24_sent_at") @db.Timestamptz
   reminder1SentAt  DateTime?         @map("reminder_1_sent_at") @db.Timestamptz
   /// فاز ۱۹: امتیاز ریسک غیبت (۰–۱۰۰) و زمان محاسبه؛ صرفاً برای یادآوری هدفمند (هیچ تصمیم بالینی)
@@ -1228,4 +1230,276 @@ model InsurancePolicy {
 
   @@index([patientId])
   @@map("insurance_policies")
+}
+
+// ───────────── موج ۲–۴: قابلیتهای ارتقایافته (همه با RLS مالک) ─────────────
+
+/// M3: رزرو تکرارشونده
+model RecurringBooking {
+  id             String    @id @default(uuid()) @db.Uuid
+  patientId      String    @map("patient_id") @db.Uuid
+  doctorId       String    @map("doctor_id") @db.Uuid
+  seriesId       String    @map("series_id") @db.Uuid
+  rrule          String
+  kind           String    @default("VIDEO")
+  nextAt         DateTime  @map("next_at") @db.Timestamptz
+  status         String    @default("ACTIVE")
+  occurrences    Int       @default(0)
+  lastError      String?   @map("last_error")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([status, nextAt])
+  @@index([patientId])
+  @@map("recurring_bookings")
+}
+
+/// M3: لینک تقویم (توکن رمزنگاریشده)
+model CalendarLink {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  provider    String
+  tokenEnc    Bytes     @map("token_enc")
+  scope       String
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([userId, provider])
+  @@map("calendar_links")
+}
+
+/// M5: ترجیحات اعلان
+model NotificationPreference {
+  userId      String  @map("user_id") @db.Uuid
+  eventType   String  @map("event_type")
+  channel     String
+  enabled     Boolean @default(true)
+  quietFrom   String? @map("quiet_from")
+  quietTo     String? @map("quiet_to")
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@id([userId, eventType, channel])
+  @@map("notification_preferences")
+}
+
+/// M5: قالب نسخهدار اعلان
+model NotificationTemplate {
+  key      String   @id
+  version  Int
+  channels String
+  bodyFa   String   @map("body_fa")
+  abGroup  String?  @map("ab_group")
+  enabled  Boolean  @default(true)
+  @@map("notification_templates")
+}
+
+/// M5: صف مرده اعلان
+model DeadLetterNotice {
+  id        String   @id @default(uuid()) @db.Uuid
+  jobId     String   @map("job_id")
+  channel   String
+  reason    String
+  retryCount Int     @default(0) @map("retry_count")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([createdAt])
+  @@map("dead_letter_notices")
+}
+
+/// M6: نتیجهٔ اسکن فایل
+model FileAnalysis {
+  id          String   @id @default(uuid()) @db.Uuid
+  objectKey   String   @map("object_key")
+  sha256      String
+  mime        String
+  bytes       BigInt
+  state       String   @default("QUARANTINED")
+  phiFlags    String?  @map("phi_flags")
+  ocrTextKey  String?  @map("ocr_text_key")
+  redactedKey String?  @map("redacted_key")
+  score       Int?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([objectKey])
+  @@index([state, createdAt])
+  @@map("file_analyses")
+}
+
+/// M7: پاسخ سریع پزشک
+model ChatQuickReply {
+  id       String @id @default(uuid()) @db.Uuid
+  doctorId String @map("doctor_id") @db.Uuid
+  textFa   String @map("text_fa")
+  @@index([doctorId])
+  @@map("chat_quick_replies")
+}
+
+/// M7: خلاصهٔ مکالمه با رضایت
+model ConversationSummary {
+  conversationId String   @id @map("conversation_id") @db.Uuid
+  bodyEnc        Bytes    @map("body_enc")
+  consentId      String   @map("consent_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  @@map("conversation_summaries")
+}
+
+/// M8: سیاست اتاق ویدئو
+model VideoRoomPolicy {
+  appointmentId     String  @id @map("appointment_id") @db.Uuid
+  waitingRoom       Boolean @default(true) @map("waiting_room")
+  allowScreenShare  Boolean @default(false) @map("allow_screen_share")
+  captions          Boolean @default(false)
+  recordConsent     Boolean @default(false) @map("record_consent")
+  retentionHours    Int?    @map("retention_hours")
+  @@map("video_room_policies")
+}
+
+/// M9: نقطهٔ تایم لاین سلامت
+model HealthTimelinePoint {
+  id        String   @id @default(uuid()) @db.Uuid
+  patientId String   @map("patient_id") @db.Uuid
+  kind      String
+  valueEnc  Bytes    @map("value_enc")
+  at        DateTime @map("at") @db.Timestamptz
+  @@index([patientId, at])
+  @@map("health_timeline_points")
+}
+
+/// M9: بازسازی داروها
+model MedicationReconciliation {
+  id         String   @id @default(uuid()) @db.Uuid
+  patientId  String   @map("patient_id") @db.Uuid
+  itemsEnc   Bytes    @map("items_enc")
+  reviewedBy String?  @map("reviewed_by") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  @@index([patientId])
+  @@map("medication_reconciliations")
+}
+
+/// M9/M1: رسید رضایت قابل اثبات
+model ConsentReceipt {
+  id       String   @id @default(uuid()) @db.Uuid
+  userId   String   @map("user_id") @db.Uuid
+  policy   String
+  version  String
+  channel  String
+  hash     String
+  at       DateTime @default(now()) @db.Timestamptz
+  @@index([userId, at])
+  @@map("consent_receipts")
+}
+
+/// M10: نسخهٔ قواعد triage
+model TriageRuleSet {
+  id         String   @id @default(uuid()) @db.Uuid
+  version    String   @unique
+  contentEnc Bytes    @map("content_enc")
+  approvedBy String   @map("approved_by") @db.Uuid
+  approvedAt DateTime @map("approved_at") @db.Timestamptz
+  @@map("triage_rule_sets")
+}
+
+/// M10: پروندهٔ نظر دوم با escrow
+model SecondOpinionCase {
+  id           String   @id @default(uuid()) @db.Uuid
+  patientId    String   @map("patient_id") @db.Uuid
+  specialty    String
+  anonymousKey String   @unique @map("anonymous_key")
+  state        String
+  slaHours     Int      @map("sla_hours")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  @@index([state, createdAt])
+  @@map("second_opinion_cases")
+}
+
+/// M11:budget خطا
+model SloBudget {
+  service   String @id
+  objective Float
+  burnRate  Float  @map("burn_rate")
+  window    String
+  @@map("slo_budgets")
+}
+
+/// M11: تمرین chaos
+model ChaosDrill {
+  id        String   @id @default(uuid()) @db.Uuid
+  target    String
+  result    String
+  at        DateTime @map("at") @db.Timestamptz
+  @@index([at])
+  @@map("chaos_drills")
+}
+
+/// M13: رویداد فونل (بدون PHI)
+model FunnelEvent {
+  id           String   @id @default(uuid()) @db.Uuid
+  anonymousId  String   @map("anonymous_id")
+  step         String
+  metaHash     String?  @map("meta_hash")
+  at           DateTime @default(now()) @map("at") @db.Timestamptz
+  @@index([step, at])
+  @@map("funnel_events")
+}
+
+/// M13: آزمایش A/B
+model Experiment {
+  key      String  @id
+  variants String
+  enabled  Boolean @default(false)
+  @@map("experiments")
+}
+
+/// M14: شبکهٔ درمانگاهها
+model Clinic {
+  id         String  @id @default(uuid()) @db.Uuid
+  name       String
+  addressFa  String  @map("address_fa")
+  phone      String
+  geoLat     Float?  @map("geo_lat")
+  geoLng     Float?  @map("geo_lng")
+  verified   Boolean @default(false)
+  @@index([name])
+  @@map("clinics")
+}
+
+/// M14: فضای کاری پزشک
+model DoctorWorkspace {
+  doctorId  String @id @map("doctor_id") @db.Uuid
+  dashboard String
+  @@map("doctor_workspaces")
+}
+
+/// M14: بستهٔ سازمانی
+model OrganizationPlan {
+  id        String @id @default(uuid()) @db.Uuid
+  name      String
+  seats     Int
+  active    Boolean @default(true)
+  @@map("organization_plans")
+}
+
+/// M13: بازخورد NPS محصول (بدون متن آزاد؛ فقط امتیاز و مرحله)
+model ProductFeedback {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String?  @map("user_id") @db.Uuid
+  anonymousId String   @map("anonymous_id")
+  score       Int
+  step        String?
+  at          DateTime @default(now()) @db.Timestamptz
+  @@index([at])
+  @@index([step, at])
+  @@map("product_feedback")
+}
+
+/// M15: ترجیحات دسترس‌پذیری/ظاهر هر کاربر
+model UserUiPreference {
+  userId       String   @id @map("user_id") @db.Uuid
+  theme        String   @default("system")
+  fontScale    Float    @default(1) @map("font_scale")
+  contrast     String   @default("normal")
+  reducedMotion Boolean @default(false) @map("reduced_motion")
+  locale       String   @default("fa")
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  @@map("user_ui_preferences")
 }

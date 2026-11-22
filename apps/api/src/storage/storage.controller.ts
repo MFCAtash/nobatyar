@@ -12,6 +12,13 @@ const UploadTokenSchema = z.object({
   bytes:  z.number().int().min(1).max(MAX_FILE_BYTES),
 });
 
+const FinalizeSchema = z.object({
+  bucket: z.enum(["chat", "records"]),
+  objectKey: z.string().min(3).max(300),
+  mime: z.string().min(3).max(80),
+  bytes: z.number().int().min(1).max(MAX_FILE_BYTES),
+}).strict();
+
 @Controller("storage")
 @UseGuards(JwtGuard)
 export class StorageController {
@@ -30,6 +37,13 @@ export class StorageController {
   }
 
   /** لیست MIME مجاز — برای نمایش در UI */
+  @Post("finalize")
+  finalize(
+    @Body(new ZodPipe(FinalizeSchema)) dto: z.infer<typeof FinalizeSchema>,
+  ) {
+    return this.svc.finalizeUpload(dto.bucket, dto.objectKey, dto.mime, dto.bytes);
+  }
+
   @Post("allowed-types")
   allowedTypes(@Body("bucket") bucket: "chat" | "records") {
     return { types: ALLOWED_MIME[bucket] ?? [] };

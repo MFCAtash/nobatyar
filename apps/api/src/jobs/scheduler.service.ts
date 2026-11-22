@@ -13,6 +13,7 @@ import { AppointmentsService } from "../appointments/appointments.service";
 import { WaitlistService } from "../appointments/waitlist.service";
 import { AuditVerifierService } from "../audit/audit-verifier.service";
 import { RefundWorkerService } from "../payment/refund-worker.service";
+import { RecurringService } from "../appointments/recurring.service";
 import { REFUND_WORKER_CONFIG, type RefundWorkerConfig } from "../payment/refund-worker.config";
 
 /** BullMQ: یک job تکرارشونده (هر ۶۰ ثانیه). فقط وقتی ENABLE_WORKERS=true؛ برای اجرا در یک نمونه‌ی مجزا (worker). */
@@ -36,6 +37,7 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
     @Inject(AuditVerifierService) private readonly auditVerifier: AuditVerifierService,
     @Inject(RefundWorkerService) private readonly refunds: RefundWorkerService,
     @Inject(REFUND_WORKER_CONFIG) private readonly refundCfg: RefundWorkerConfig,
+    @Inject(RecurringService) private readonly recurring: RecurringService,
   ) {}
 
   async onModuleInit() {
@@ -57,6 +59,7 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
       await this.dataRequests.processDue(); // A6: درخواستهای تأییدشده و رسیده به موعد
       await this.appointments.scoreRisks(); // A11: امتیاز غیبت (توضیحپذیر)
       await this.waitlist.expireStale(); // A24: انقضای لیست انتظار
+      await this.recurring.materializeDue(); // M3: materialize نوبت تکرارشوندهٔ سررسیده
       if (Date.now() - this.lastAuditVerify > 86_400_000) { this.lastAuditVerify = Date.now(); await this.auditVerifier.verify(); } // فاز ۸: انقضای نظر دوم بی‌پاسخ
     }, { connection, concurrency: 1 });
     worker.on("failed", (_job, err) => this.log.error(`maintenance job failed: ${err.message}`));
