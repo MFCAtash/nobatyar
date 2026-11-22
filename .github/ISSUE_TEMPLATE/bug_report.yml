@@ -1,0 +1,32 @@
+name: 🐛 Bug report / گزارش خطا
+description: Report a reproducible problem / گزارش یک مشکل قابل بازتولید
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened? / چه اتفاقی افتاد؟
+      description: Clear description / توضیح واضح
+    validations: { required: true }
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce / مراحل بازتولید
+      placeholder: 1. Go to ... 2. Click ... 3. See error
+    validations: { required: true }
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior / رفتار مورد انتظار
+    validations: { required: true }
+  - type: input
+    id: version
+    attributes:
+      label: Version / نسخه
+      placeholder: main @ <commit>
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment / محیط
+      description: OS, Node version, browser (no secrets!) / سیستم، نسخه نود، مرورگر (بدون اسرار)

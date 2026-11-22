@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-label="نوبت یار - کاور ایزومتریک روشن">
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f0fdfa"/>
+      <stop offset="1" stop-color="#d1fae5"/>
+    </linearGradient>
+    <linearGradient id="phone" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0f766e"/>
+      <stop offset="1" stop-color="#115e59"/>
+    </linearGradient>
+    <filter id="shadow"><feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#0f766e" flood-opacity="0.22"/></filter>
+  </defs>
+
+  <rect width="1280" height="640" fill="url(#bg2)"/>
+  <circle cx="180" cy="120" r="180" fill="#99f6e4" opacity="0.35"/>
+  <circle cx="1160" cy="560" r="220" fill="#5eead4" opacity="0.28"/>
+
+  <!-- phone mockup -->
+  <g filter="url(#shadow)" transform="translate(120 110)">
+    <rect width="250" height="420" rx="34" fill="url(#phone)"/>
+    <rect x="16" y="16" width="218" height="388" rx="24" fill="#ffffff"/>
+    <rect x="44" y="40" width="162" height="18" rx="9" fill="#ccfbf1"/>
+    <rect x="44" y="74" width="120" height="12" rx="6" fill="#d1d5db"/>
+    <g fill="#f0fdfa">
+      <rect x="44" y="110" width="162" height="50" rx="12"/>
+      <rect x="44" y="172" width="162" height="50" rx="12"/>
+      <rect x="44" y="234" width="162" height="50" rx="12"/>
+    </g>
+    <rect x="44" y="172" width="162" height="50" rx="12" fill="#2dd4bf"/>
+    <circle cx="125" cy="330" r="34" fill="#0f766e" opacity="0.15"/>
+    <path d="M108 330 h34 M125 313 v34" stroke="#0f766e" stroke-width="8" stroke-linecap="round"/>
+  </g>
+
+  <!-- video call card -->
+  <g filter="url(#shadow)" transform="translate(900 150)">
+    <rect width="270" height="190" rx="24" fill="#ffffff"/>
+    <rect x="18" y="18" width="234" height="120" rx="16" fill="#0f766e"/>
+    <circle cx="135" cy="78" r="38" fill="#5eead4"/>
+    <circle cx="135" cy="66" r="13" fill="#0f766e"/>
+    <path d="M105 104 a30 30 0 0 1 60 0" fill="#0f766e"/>
+    <circle cx="66" cy="158" r="14" fill="#f87171"/>
+    <circle cx="108" cy="158" r="14" fill="#fbbf24"/>
+    <circle cx="150" cy="158" r="14" fill="#34d399"/>
+  </g>
+
+  <!-- title -->
+  <g direction="rtl">
+    <text x="760" y="320" text-anchor="middle" fill="#064e3b" font-family="Vazirmatn,Tahoma,sans-serif" font-size="82" font-weight="700">نوبت‌یار</text>
+    <text x="760" y="382" text-anchor="middle" fill="#0f766e" font-family="Vazirmatn,Tahoma,sans-serif" font-size="30">پلتفرم کامل سلامت دیجیتال</text>
+    <text x="760" y="432" text-anchor="middle" fill="#047857" font-family="Vazirmatn,Tahoma,sans-serif" font-size="20">از جستجو تا ویزیت آنلاین و پرونده سلامت</text>
+  </g>
+  <text x="760" y="560" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="18" fill="#0f766e" opacity="0.75">Modular Monolith · TypeScript · RTL · Feature Flags</text>
+</svg>

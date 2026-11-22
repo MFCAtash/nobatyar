@@ -1,0 +1,21 @@
+name: ✨ Idea / پیشنهاد ویژگی
+description: Suggest an improvement (view-only repo; no code contributions) / پیشنهاد بهبود
+title: "[Idea]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / مسئله
+      description: What problem does this solve? / چه مشکلی را حل میکند؟
+    validations: { required: true }
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal / پیشنهاد
+      description: Describe the feature / قابلیت پیشنهادی را توضیح دهید
+    validations: { required: true }
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives / جایگزینها

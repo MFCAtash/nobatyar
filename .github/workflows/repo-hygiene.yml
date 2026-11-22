@@ -1,0 +1,40 @@
+name: Repo hygiene
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hygiene:
+    name: GitHub readiness checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Required files present
+        run: |
+          for f in README.md LICENSE LEGAL.md SECURITY.md CONTRIBUTING.md CODE_OF_CONDUCT.md CHANGELOG.md docs/GITHUB-PUBLISH.md; do
+            test -s "$f" || { echo "::error::missing or empty $f"; exit 1; }
+          done
+
+      - name: Social preview assets present
+        run: |
+          for f in docs/assets/github/cover-dark-teal.png docs/assets/github/cover-isometric.png docs/assets/github/cover-persian-pattern.png; do
+            test -s "$f" || { echo "::error::missing $f"; exit 1; }
+          done
+
+      - name: No secrets tracked
+        run: |
+          if git ls-files | grep -Eq '(^|/)\.env($|\.)'; then
+            echo "::error::a .env file is tracked"; exit 1
+          fi
+          echo "no .env tracked"
+
+      - name: Package metadata
+        run: |
+          node -e "const p=require('./package.json'); if(!p.repository||!p.homepage||!p.license||!/All Rights|LICENSE/.test(p.license)) process.exit(1)"

@@ -1,6 +1,14 @@
 {
   "name": "nobatyar",
+  "version": "1.0.0",
   "private": true,
+  "description": "نوبت‌یار — پلتفرم جامع رزرو نوبت پزشکی، ویزیت آنلاین و پرونده سلامت (RTL) | NobatYar — secure Persian digital-health platform",
+  "keywords": ["healthtech", "booking", "persian", "rtl", "nestjs", "nextjs", "prisma", "rls"],
+  "homepage": "https://github.com/YOUR_USERNAME/nobatyar#readme",
+  "repository": { "type": "git", "url": "https://github.com/YOUR_USERNAME/nobatyar.git" },
+  "bugs": { "url": "https://github.com/YOUR_USERNAME/nobatyar/issues" },
+  "license": "SEE LICENSE IN LICENSE",
+  "author": "Mohammad Atash <mohammadatash62@gmail.com>",
   "packageManager": "pnpm@9.12.0",
   "engines": {
     "node": ">=20.11"
