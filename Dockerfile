@@ -43,6 +43,7 @@ RUN pnpm dlx turbo@${TURBO_VERSION} prune @nobatyar/web --docker
 # build کامل (devDependencies دارد): کامپایل tsc + مبنای target ی migrate
 FROM base AS api-build
 COPY --from=prune-api /app/out/json/ ./
+COPY tsconfig.base.json ./tsconfig.base.json
 COPY --from=prune-api /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
 # postinstall ی api دستور «prisma generate» است و schema را لازم دارد؛ پیش از install فقط همان را بیاور
 COPY --from=prune-api /app/out/full/apps/api/prisma/schema.prisma ./apps/api/prisma/schema.prisma
@@ -94,6 +95,7 @@ CMD ["node", "dist/main.js"]
 # ───────────────────────────── Web ─────────────────────────────
 FROM base AS web-build
 COPY --from=prune-web /app/out/json/ ./
+COPY tsconfig.base.json ./tsconfig.base.json
 COPY --from=prune-web /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
     pnpm install --frozen-lockfile

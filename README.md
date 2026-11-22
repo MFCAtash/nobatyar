@@ -44,9 +44,9 @@ High-resolution PNG files for GitHub Social Preview and all editable SVG sources
 
 [![NobatYar product demo](docs/assets/video/demo-poster.png)](docs/assets/video/video_2026-11-22_19-39-31.mp4)
 
-<video src="https://github.com/MFCAtash/nobatyar/raw/main/docs/assets/video/video_2026-11-22_19-39-31.mp4?raw=true" poster="https://github.com/MFCAtash/nobatyar/raw/main/docs/assets/video/demo-poster.png?raw=true" controls width="100%" aria-label="NobatYar product demo"></video>
+![NobatYar product demo — animated preview](https://github.com/MFCAtash/nobatyar/raw/main/docs/assets/video/demo-preview.gif?raw=true)
 
-[Download / open the MP4 directly](docs/assets/video/video_2026-11-22_19-39-31.mp4) — 1:10 walkthrough recorded from the running application. The file is 20 MB, well below GitHub's 100 MB limit; Git LFS is not required.
+[Watch / download the full 1:10 MP4](docs/assets/video/video_2026-11-22_19-39-31.mp4) — recorded from the running application. The MP4 is 20 MB (below GitHub's 100 MB limit; no Git LFS required); the inline animated GIF is a lightweight 219 KB preview because GitHub sanitizes `<video>` tags in README files.
 
 ---
 
