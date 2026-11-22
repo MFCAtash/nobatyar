@@ -4,7 +4,7 @@
 
 ### The production-grade Persian digital health platform for intelligent clinical scheduling, secure consultations, and patient-centered records.
 
-[![CI](https://github.com/YOUR_USERNAME/nobatyar/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/nobatyar/actions/workflows/ci.yml)
+[![CI](https://github.com/MFCAtash/nobatyar/actions/workflows/ci.yml/badge.svg)](https://github.com/MFCAtash/nobatyar/actions/workflows/ci.yml)
 [![OpenAPI: 207 operations](https://img.shields.io/badge/OpenAPI-207%20operations-0284c7)](apps/api/openapi/openapi.json)
 [![API tests](https://img.shields.io/badge/API%20tests-729-16a34a)](apps/api/src)
 [![Web tests](https://img.shields.io/badge/Web%20tests-190-16a34a)](apps/web/src)

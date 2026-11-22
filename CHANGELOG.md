@@ -25,4 +25,4 @@ All notable changes to NobatYar are documented here. This file follows Keep a Ch
 
 - API: 85 files / 729 tests · Web: 21 files / 190 tests · E2E: 15/15 · mutation kill-rate 1.0 · a11y 0 critical violations.
 
-[1.0.0]: https://github.com/YOUR_USERNAME/nobatyar/releases/tag/v1.0.0
+[1.0.0]: https://github.com/MFCAtash/nobatyar/releases/tag/v1.0.0

@@ -10,12 +10,12 @@
 
 ```powershell
 # در github.com一个新 repository بسازید (بدون README/LICENSE اولیه)
-git remote add origin https://github.com/YOUR_USERNAME/nobatyar.git
+git remote add origin https://github.com/MFCAtash/nobatyar.git
 git branch -M main
 git push -u origin main
 ```
 
-سپس `YOUR_USERNAME` را در `package.json`، `CHANGELOG.md` و `docs/GITHUB-PUBLISH.md` با نام کاربری واقعی جایگزین کنید.
+سپس `MFCAtash` را در `package.json`، `CHANGELOG.md` و `docs/GITHUB-PUBLISH.md` با نام کاربری واقعی جایگزین کنید.
 
 ## ۳) Social Preview (کاور گیت هاب)
 
@@ -54,7 +54,7 @@ GitHub برای Social Preview فقط PNG/JPG میپذیرد (SVG نه). فای�
 - [x] `.gitignore` (بدون `.env`) و `.gitattributes`
 - [x] Social preview PNG + SVG
 - [x] تمام تستها و CI سبز
-- [ ] جایگزینی `YOUR_USERNAME` و push نهایی (توسط شما)
+- [ ] جایگزینی `MFCAtash` و push نهایی (توسط شما)
 
 ## ۶) محافظت بیشتر (اختیاری)
 
