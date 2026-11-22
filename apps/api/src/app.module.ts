@@ -42,6 +42,7 @@ import { KmsModule } from "./crypto/kms/kms.module";
 import { TriageGovernanceModule } from "./triage-governance/triage-governance.module";
 import { GrowthModule } from "./growth/growth.module";
 import { DesignModule } from "./design/design.module";
+import { PatientRecordModule } from "./patient-record/patient-record.module";
 
 @Module({
   imports: [
@@ -66,7 +67,7 @@ import { DesignModule } from "./design/design.module";
     // فاز ۱۹
     VitalsModule, ScribeModule, FhirModule, WalletModule, AnalyticsModule,
     // M10/M14/M15 (ارتقا)
-    TriageGovernanceModule, GrowthModule, DesignModule,
+    TriageGovernanceModule, GrowthModule, DesignModule, PatientRecordModule,
   ],
   controllers: [HealthController],
 })
