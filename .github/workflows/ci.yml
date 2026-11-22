@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: actionlint
         run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.4 -color
 
@@ -38,7 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: pnpm-lock.yaml و prisma/migrations واقعی و هم‌خوان با prisma/sql
         run: sh scripts/check-repo-integrity.sh
 
@@ -47,7 +47,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
       - name: Lint + typecheck (همه‌ی workspace ها)
         run: pnpm exec turbo run lint typecheck --continue
@@ -57,7 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
       - name: Unit tests
         run: pnpm exec turbo run test --continue
@@ -70,7 +70,7 @@ jobs:
       API_URL: http://localhost:3000
       LIVEKIT_PUBLIC_URL: ws://localhost:7880
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
       - name: Build (shared → api → web)
         run: pnpm exec turbo run build
@@ -111,7 +111,7 @@ jobs:
       TEST_REDIS_URL: redis://127.0.0.1:6379
       REDIS_URL: redis://127.0.0.1:6379
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
 
       - name: Build shared package
@@ -175,7 +175,7 @@ jobs:
 
       - name: Upload API log on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: api-log
           path: |
@@ -193,7 +193,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
 
       - name: Build Storybook
@@ -220,7 +220,7 @@ jobs:
           echo "::warning::baseline تصویری commit نشده؛ آرتیفکت visual-baselines را دانلود و در apps/e2e/visual/__snapshots__ commit کنید."
           pnpm --filter @nobatyar/e2e exec playwright test -c playwright.visual.config.ts stories.visual --update-snapshots
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: visual-baselines-and-report
@@ -265,7 +265,7 @@ jobs:
       APP_DATABASE_URL: postgresql://nobatyar_app:ci_app_pw@127.0.0.1:5432/nobatyar_test
       API_URL: http://127.0.0.1:3000
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
 
       - name: Build shared + API + Web
@@ -313,7 +313,7 @@ jobs:
 
       - name: Upload reports and logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-artifacts
           retention-days: 7
@@ -328,7 +328,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
       - name: Build API (برای preflight CLI)
         run: |
@@ -354,7 +354,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Require committed lockfile
         run: test -f pnpm-lock.yaml || { echo "::error::pnpm-lock.yaml missing (turbo prune و --frozen-lockfile لازم دارند)"; exit 1; }
       - name: Build api
@@ -391,7 +391,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: gitleaks
@@ -412,7 +412,7 @@ jobs:
     container:
       image: semgrep/semgrep:1.97.0
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: semgrep — blocking (ERROR)
         run: >-
           semgrep scan --metrics=off --error --severity ERROR
@@ -432,10 +432,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # فقط HIGH/CRITICAL و فقط آسیب‌پذیری‌هایی که patch دارند؛ تا CI بی‌دلیل قرمز نماند.
       - name: trivy fs
-        uses: aquasecurity/trivy-action@v0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: .

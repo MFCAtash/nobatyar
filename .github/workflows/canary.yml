@@ -32,10 +32,10 @@ jobs:
       IMAGE: ${{ github.event.inputs.image }}
       NAMESPACE: ${{ github.event.inputs.namespace }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup kubectl
-        uses: azure/setup-kubectl@v4
+        uses: azure/setup-kubectl@v5
 
       - name: Install Argo Rollouts kubectl plugin
         run: |
