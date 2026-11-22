@@ -35,10 +35,12 @@ jobs:
 
       - name: No secrets tracked
         run: |
-          if git ls-files | grep -Eq '(^|/)\.env($|\.)'; then
-            echo "::error::a .env file is tracked"; exit 1
+          tracked="$(git ls-files | grep -E '(^|/)\.env' || true)"
+          bad="$(printf '%s\n' "$tracked" | grep -Ev '(^|/)\.env\.(example|production\.example)$' || true)"
+          if [ -n "$bad" ]; then
+            echo "::error::a real .env file is tracked"; printf '%s\n' "$bad"; exit 1
           fi
-          echo "no .env tracked"
+          echo "no real .env tracked (templates allowed)"
 
       - name: Package metadata
         run: |

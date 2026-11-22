@@ -1,5 +1,4 @@
 import type { FormEvent } from "react";
-import { ErrorBox } from "@/components/ui";
 import { Field } from "@/components/kit";
 import { formatCountdown, formatDigits, toPersianDigits } from "@/lib/format";
 import { OTP_LENGTH } from "@/lib/otp";

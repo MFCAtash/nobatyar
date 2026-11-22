@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { ConflictException, ForbiddenException, HttpException, Inject, Injectable, Logger, NotFoundException, UnprocessableEntityException } from "@nestjs/common";
+import { ConflictException, HttpException, Inject, Injectable, Logger, NotFoundException, UnprocessableEntityException } from "@nestjs/common";
 import { AuditService } from "../audit/audit.service";
 import type { AuthUser } from "../common/decorators";
 import { aad, FIELD_CRYPTO, FieldCrypto } from "../crypto";

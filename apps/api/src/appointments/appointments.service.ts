@@ -23,7 +23,6 @@ import type { BookInput, ListInput } from "./schemas";
 
 export type Actor = { kind: "user"; id: string; role: Role } | { kind: "system" };
 
-const ACTIVE: Status[] = ["PENDING_PAYMENT", "PENDING_CONFIRMATION", "CONFIRMED", "IN_PROGRESS"];
 const OPEN: Status[] = ["PENDING_PAYMENT", "PENDING_CONFIRMATION", "CONFIRMED"];
 /** اقدام‌هایی که نوبت را به وضعیت پایانی می‌برند (قلاب بستن اتاق ویدئو). */
 const FINISHING: Action[] = ["COMPLETE", "DOCTOR_CANCEL", "PATIENT_CANCEL", "REPORT_PATIENT_NO_SHOW", "REPORT_DOCTOR_NO_SHOW", "EXPIRE"];

@@ -11,7 +11,7 @@ import { isOwnRecordObjectKey, resolveShareExpiry } from "./records-policy";
 
 export { AddAttachmentSchema, CreateRecordSchema, ShareSchema, UpdateRecordSchema } from "./records.schemas";
 export type { CreateRecordInput } from "./records.schemas";
-import type { AddAttachmentSchema, CreateRecordSchema, CreateRecordInput, ShareSchema } from "./records.schemas";
+import type { AddAttachmentSchema, CreateRecordInput, ShareSchema } from "./records.schemas";
 
 const PAGE = 20;
 const listSelect = {

@@ -124,7 +124,6 @@ export function CallRoom({ join, initial, appointment, onExit, onAppointmentChan
       roomRef.current = null;
     };
     // اتصال فقط یک‌بار به‌ازای mount؛ join/initial عمداً ثابت‌اند (توکن جدید = mount جدید)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ساعت، نگه‌داشتن صفحه روشن، هشدار بستن تب، به‌روزرسانی وضعیت نوبت

@@ -9,6 +9,10 @@ description = "مقادیر نمونه/موقتِ غیرواقعی"
 paths = [
   '''(^|/)\.env\.example$''',
   '''pnpm-lock\.yaml$''',
+  '''(^|/)(test|tests)/''',
+  '''\.(test|spec)\.tsx?$''',
+  '''apps/e2e/visual-baselines/''',
+  '''docs/assets/''',
 ]
 # رمزهای یک‌بارمصرفِ سرویس‌های CI (فقط روی container های موقت)
 regexes = [

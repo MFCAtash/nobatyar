@@ -11,7 +11,6 @@ import {
   hashMeta,
   npsScore,
   sanitizeMeta,
-  FunnelError,
 } from "./funnel";
 import type { ExperimentUpsertInput, FeedbackInput, FunnelEventInput } from "./funnel.schemas";
 

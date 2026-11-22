@@ -43,6 +43,7 @@ export class VitalsService {
 
   /** فقط بیمار میتواند اندازهگیری ثبت کند. هشدارها به بیمار و پزشک(ان) قبلی او ارسال میشود. */
   async create(u: AuthUser, input: VitalInput, now = new Date()) {
+    void now; // تزریقپذیر برای تست؛ مقدار پیشفرض همان زمان فعلی است
     const issues = validateVital(input.type, input.valuePrimary, input.valueSecondary);
     if (issues.length) throw new UnprocessableEntityException({ error: "vital_invalid", issues });
     const measuredAt = new Date(input.measuredAt);
