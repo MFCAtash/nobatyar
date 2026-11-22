@@ -53,7 +53,7 @@ export function decryptExport(payload: EncryptedExport, passphrase: string): str
   if (salt.length !== 16 || iv.length !== 12 || tag.length !== 16) throw new Error("invalid export envelope");
   if (tag.length !== 16) throw new Error("invalid export envelope");
   const key = scryptSync(passphrase.normalize("NFKC"), salt, 32, { N: 16384, r: 8, p: 1 });
-  const decipher = createDecipheriv("aes-256-gcm", key, iv);
+  const decipher = createDecipheriv("aes-256-gcm", key, iv, { authTagLength: 16 });
   decipher.setAAD(Buffer.from("nobatyar:export:v1"));
   decipher.setAuthTag(tag);
   const plain = Buffer.concat([decipher.update(Buffer.from(payload.ciphertext, "base64")), decipher.final()]).toString("utf-8");
