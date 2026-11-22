@@ -44,7 +44,9 @@ High-resolution PNG files for GitHub Social Preview and all editable SVG sources
 
 [![NobatYar product demo](docs/assets/video/demo-poster.png)](docs/assets/video/video_2026-11-22_19-39-31.mp4)
 
-A 1:10 walkthrough of the doctor-discovery and booking experience, recorded from the running application. Click the poster to open the MP4 in GitHub's native video player. The source file is stored at `docs/assets/video/video_2026-11-22_19-39-31.mp4` (20 MB, well below GitHub's 100 MB file limit; Git LFS is not required).
+<video src="https://github.com/MFCAtash/nobatyar/raw/main/docs/assets/video/video_2026-11-22_19-39-31.mp4?raw=true" poster="https://github.com/MFCAtash/nobatyar/raw/main/docs/assets/video/demo-poster.png?raw=true" controls width="100%" aria-label="NobatYar product demo"></video>
+
+[Download / open the MP4 directly](docs/assets/video/video_2026-11-22_19-39-31.mp4) — 1:10 walkthrough recorded from the running application. The file is 20 MB, well below GitHub's 100 MB limit; Git LFS is not required.
 
 ---
 

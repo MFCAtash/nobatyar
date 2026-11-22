@@ -5,5 +5,7 @@ const config: StorybookConfig = {
   addons: ["@storybook/addon-essentials", "@storybook/addon-a11y"],
   framework: { name: "@storybook/nextjs", options: {} },
   staticDirs: ["../public"],
+  // CI (Next 14 + Storybook 8) webpack cache shutdown can crash with `tap` undefined.
+  webpackFinal: async (config) => ({ ...config, cache: false }),
 };
 export default config;

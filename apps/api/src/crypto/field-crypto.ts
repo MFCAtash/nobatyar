@@ -76,7 +76,7 @@ export class FieldCrypto {
     const iv = buf.subarray(3, 15);
     const tag = buf.subarray(15, 31);
     const ct = buf.subarray(31);
-    const decipher = createDecipheriv("aes-256-gcm", key, iv);
+    const decipher = createDecipheriv("aes-256-gcm", key, iv, 16);
     decipher.setAAD(Buffer.from(aad, "utf8"));
     decipher.setAuthTag(tag);
     try {
