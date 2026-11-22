@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2560" height="1280" viewBox="0 0 1280 640" role="img" aria-label="NobatYar amber vitality 3D cover">
+  <defs>
+    <linearGradient id="bg3" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1c1917"/><stop offset="0.5" stop-color="#7c2d12"/><stop offset="1" stop-color="#0f766e"/>
+    </linearGradient>
+    <radialGradient id="warm"><stop offset="0" stop-color="#fbbf24" stop-opacity="0.85"/><stop offset="1" stop-color="#fbbf24" stop-opacity="0"/></radialGradient>
+    <radialGradient id="cool"><stop offset="0" stop-color="#2dd4bf" stop-opacity="0.7"/><stop offset="1" stop-color="#2dd4bf" stop-opacity="0"/></radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fde68a"/><stop offset="1" stop-color="#f59e0b"/>
+    </linearGradient>
+    <filter id="blur3"><feGaussianBlur stdDeviation="38"/></filter>
+    <filter id="glow3"><feGaussianBlur stdDeviation="9" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="sh"><feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#000" flood-opacity="0.4"/></filter>
+  </defs>
+
+  <rect width="1280" height="640" fill="url(#bg3)"/>
+  <circle cx="230" cy="500" r="300" fill="url(#warm)" filter="url(#blur3)"/>
+  <circle cx="1040" cy="140" r="300" fill="url(#cool)" filter="url(#blur3)"/>
+
+  <g transform="translate(880 150) rotate(9)" filter="url(#sh)">
+    <rect width="300" height="300" rx="34" fill="#ffffff" fill-opacity="0.1" stroke="#fde68a" stroke-opacity="0.35"/>
+    <path d="M0 -86 L86 -43 L86 43 L0 86 L-86 43 L-86 -43 Z" transform="translate(150 150)" fill="#ffffff" fill-opacity="0.08" stroke="url(#gold)" stroke-width="3"/>
+    <path d="M150 96 v108 M96 150 h108" stroke="url(#gold)" stroke-width="30" stroke-linecap="round" filter="url(#glow3)"/>
+  </g>
+
+  <g transform="translate(110 420) rotate(-5)" filter="url(#sh)">
+    <rect width="340" height="130" rx="26" fill="#ffffff" fill-opacity="0.1" stroke="#ffffff" stroke-opacity="0.25"/>
+    <path d="M28 82 h70 l22 -44 30 88 28 -54 18 10 h112" fill="none" stroke="#5eead4" stroke-width="7" stroke-linecap="round" filter="url(#glow3)"/>
+  </g>
+
+  <text x="450" y="260" fill="#ffffff" font-family="Inter,Arial,sans-serif" font-size="88" font-weight="800">NOBATYAR</text>
+  <text x="454" y="320" fill="#fde68a" font-family="Inter,Arial,sans-serif" font-size="32">Vitality, engineered into software</text>
+  <text x="456" y="372" fill="#ccfbf1" font-family="Inter,Arial,sans-serif" font-size="21">Persian RTL · Privacy-first · Operationally ready</text>
+  <text x="456" y="560" fill="#fef3c7" opacity="0.75" font-family="Inter,Arial,sans-serif" font-size="18">Encryption · RLS · Audit · SLO · Canary · Zero-PHI analytics</text>
+</svg>

@@ -24,7 +24,7 @@ jobs:
 
       - name: Social preview assets present
         run: |
-          for f in docs/assets/github/cover-dark-teal.png docs/assets/github/cover-isometric.png docs/assets/github/cover-persian-pattern.png; do
+          for f in docs/assets/github/cover-dark-teal.png docs/assets/github/cover-isometric.png docs/assets/github/cover-persian-pattern.png docs/assets/github/cover-neon-glass.png docs/assets/github/cover-aurora-3d.png docs/assets/github/cover-amber-vitality.png docs/assets/github/cover-quantum-mesh.png; do
             test -s "$f" || { echo "::error::missing $f"; exit 1; }
           done
 

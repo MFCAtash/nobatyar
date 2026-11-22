@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2560" height="1280" viewBox="0 0 1280 640" role="img" aria-label="NobatYar neon glass 3D cover">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#070b1a"/><stop offset="0.5" stop-color="#101b3a"/><stop offset="1" stop-color="#0b3f4a"/>
+    </linearGradient>
+    <radialGradient id="g1"><stop offset="0" stop-color="#22d3ee" stop-opacity="0.85"/><stop offset="1" stop-color="#22d3ee" stop-opacity="0"/></radialGradient>
+    <radialGradient id="g2"><stop offset="0" stop-color="#a855f7" stop-opacity="0.7"/><stop offset="1" stop-color="#a855f7" stop-opacity="0"/></radialGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.22"/><stop offset="1" stop-color="#ffffff" stop-opacity="0.04"/>
+    </linearGradient>
+    <linearGradient id="neon" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#a78bfa"/>
+    </linearGradient>
+    <filter id="blur"><feGaussianBlur stdDeviation="34"/></filter>
+    <filter id="glow"><feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+
+  <rect width="1280" height="640" fill="url(#bg)"/>
+  <circle cx="250" cy="120" r="300" fill="url(#g1)" filter="url(#blur)"/>
+  <circle cx="1080" cy="540" r="330" fill="url(#g2)" filter="url(#blur)"/>
+
+  <!-- 3D floating panels -->
+  <g transform="translate(790 118) skewY(-8)">
+    <rect width="330" height="300" rx="30" fill="url(#glass)" stroke="#ffffff" stroke-opacity="0.25"/>
+    <rect x="24" y="24" width="282" height="52" rx="16" fill="#ffffff" fill-opacity="0.12"/>
+    <text x="165" y="58" text-anchor="middle" fill="#e0f2fe" font-family="Inter,Arial,sans-serif" font-size="24" font-weight="600">TEHRAN · 1405</text>
+    <g fill="#ffffff" fill-opacity="0.13">
+      <rect x="24" y="100" width="62" height="54" rx="12"/><rect x="98" y="100" width="62" height="54" rx="12"/>
+      <rect x="172" y="100" width="62" height="54" rx="12"/><rect x="246" y="100" width="60" height="54" rx="12"/>
+      <rect x="24" y="170" width="62" height="54" rx="12"/><rect x="98" y="170" width="62" height="54" rx="12"/>
+    </g>
+    <rect x="172" y="170" width="62" height="54" rx="12" fill="#22d3ee"/>
+    <rect x="98" y="240" width="136" height="12" rx="6" fill="#a78bfa" opacity="0.85"/>
+  </g>
+
+  <g transform="translate(114 400) skewY(7)">
+    <rect width="300" height="120" rx="26" fill="url(#glass)" stroke="#ffffff" stroke-opacity="0.22"/>
+    <path d="M24 70 h50 l18 -34 26 66 22 -44 16 12 h120" fill="none" stroke="url(#neon)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+  </g>
+
+  <g transform="translate(980 392) skewY(-6)">
+    <rect width="200" height="120" rx="26" fill="url(#glass)" stroke="#ffffff" stroke-opacity="0.2"/>
+    <circle cx="100" cy="60" r="34" fill="#a78bfa" opacity="0.45"/>
+    <path d="M100 30 v60 M70 60 h60" stroke="#ffffff" stroke-width="10" stroke-linecap="round"/>
+  </g>
+
+  <text x="470" y="268" fill="#ffffff" font-family="Inter,Arial,sans-serif" font-size="92" font-weight="800" letter-spacing="-2">NOBATYAR</text>
+  <text x="474" y="326" fill="#67e8f9" font-family="Inter,Arial,sans-serif" font-size="34" font-weight="500">Intelligent clinical scheduling</text>
+  <text x="476" y="380" fill="#c4b5fd" font-family="Inter,Arial,sans-serif" font-size="22">Secure · RTL-native · Production-grade</text>
+  <text x="476" y="560" fill="#e2e8f0" opacity="0.7" font-family="Inter,Arial,sans-serif" font-size="19">NestJS · Next.js · Prisma · PostgreSQL RLS · WebSockets · Vault KMS</text>
+</svg>

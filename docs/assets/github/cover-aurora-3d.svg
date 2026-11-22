@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2560" height="1280" viewBox="0 0 1280 640" role="img" aria-label="NobatYar aurora 3D cover">
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#04263f"/><stop offset="0.45" stop-color="#0f766e"/><stop offset="1" stop-color="#312e81"/>
+    </linearGradient>
+    <radialGradient id="a1"><stop offset="0" stop-color="#5eead4" stop-opacity="0.85"/><stop offset="1" stop-color="#5eead4" stop-opacity="0"/></radialGradient>
+    <radialGradient id="a2"><stop offset="0" stop-color="#818cf8" stop-opacity="0.8"/><stop offset="1" stop-color="#818cf8" stop-opacity="0"/></radialGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.3"/><stop offset="1" stop-color="#ffffff" stop-opacity="0.06"/>
+    </linearGradient>
+    <filter id="soft"><feGaussianBlur stdDeviation="40"/></filter>
+    <filter id="drop"><feDropShadow dx="0" dy="18" stdDeviation="20" flood-color="#000000" flood-opacity="0.35"/></filter>
+  </defs>
+
+  <rect width="1280" height="640" fill="url(#bg2)"/>
+  <ellipse cx="260" cy="180" rx="330" ry="230" fill="url(#a1)" filter="url(#soft)"/>
+  <ellipse cx="1010" cy="470" rx="340" ry="260" fill="url(#a2)" filter="url(#soft)"/>
+
+  <!-- 3D device stack -->
+  <g transform="translate(840 120) rotate(-8)" filter="url(#drop)">
+    <rect width="300" height="410" rx="38" fill="#0b1220" opacity="0.85"/>
+    <rect x="16" y="16" width="268" height="378" rx="28" fill="url(#panel)"/>
+    <rect x="40" y="44" width="220" height="22" rx="11" fill="#d1fae5" opacity="0.8"/>
+    <rect x="40" y="84" width="160" height="14" rx="7" fill="#ffffff" opacity="0.35"/>
+    <rect x="40" y="122" width="220" height="62" rx="16" fill="#ffffff" opacity="0.18"/>
+    <rect x="40" y="198" width="220" height="62" rx="16" fill="#5eead4" opacity="0.75"/>
+    <rect x="40" y="274" width="220" height="62" rx="16" fill="#ffffff" opacity="0.18"/>
+  </g>
+
+  <g transform="translate(112 380) rotate(6)" filter="url(#drop)">
+    <rect width="330" height="150" rx="28" fill="url(#panel)" stroke="#ffffff" stroke-opacity="0.3"/>
+    <circle cx="76" cy="75" r="38" fill="#5eead4" opacity="0.6"/>
+    <path d="M58 75 h36 M76 57 v36" stroke="#042f2e" stroke-width="8" stroke-linecap="round"/>
+    <rect x="136" y="44" width="160" height="16" rx="8" fill="#ffffff" opacity="0.65"/>
+    <rect x="136" y="76" width="120" height="12" rx="6" fill="#ffffff" opacity="0.35"/>
+    <rect x="136" y="102" width="90" height="12" rx="6" fill="#a5b4fc" opacity="0.8"/>
+  </g>
+
+  <text x="440" y="250" fill="#ffffff" font-family="Inter,Arial,sans-serif" font-size="86" font-weight="800">NOBATYAR</text>
+  <text x="444" y="310" fill="#99f6e4" font-family="Inter,Arial,sans-serif" font-size="32">A complete digital health operating system</text>
+  <text x="446" y="362" fill="#c7d2fe" font-family="Inter,Arial,sans-serif" font-size="21">Booking · Payments · Visits · Records · Intelligence</text>
+  <text x="446" y="560" fill="#f8fafc" opacity="0.72" font-family="Inter,Arial,sans-serif" font-size="18">15 modules · 207 API operations · 900+ automated tests</text>
+</svg>
