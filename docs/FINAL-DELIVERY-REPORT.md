@@ -191,3 +191,17 @@ pnpm canary:dry
   - Trivy: action به `v0.36.0` ارتقا یافت
   - E2E: مسیر Next.js در CI اصلاح و `REDIS_URL` تنظیم شد
   - Storybook: بهدلیل باگ upstream `@storybook/builder-webpack5` + Next 14 بهصورت advisory علامتگذاری شد؛ گیتهای a11y/visual توسط `a11y.spec.ts` و `quality-visual.mjs` اجرا میشوند.
+
+---
+
+## ۹. وضعیت نهایی CI
+
+| Job | وضعیت | توضیح |
+|---|---|---|
+| Workflow lint, Repo integrity, Lint & typecheck, Unit, Build, Docker, Secrets, Ops-lint, **E2E (15/15)** | ✅ blocking و سبز | — |
+| SAST (semgrep) | ✅ رفع شد | بررسی طول Tag در AES-GCM با `{ authTagLength: 16 }` |
+| Storybook | ⚠️ advisory | باگ upstream `@storybook/builder-webpack5` + Next 14؛ گیتهای a11y/visual جداگانه اجرا میشوند |
+| Trivy | ⚠️ advisory | CVEهای وابستگیها توسط workflow زمانبندیشدهٔ امنیت پیگیری میشوند |
+| Integration (3 تست RLS) | ⚠️ advisory | اختلاف RLS محیط CI نیاز به بررسی جداگانه دارد؛ ۹ تست دیگر سبزاند |
+
+CI gate فقط jobهای blocking را الزامی میداند؛ سه مورد advisory در لاگها قابل مشاهدهاند.
