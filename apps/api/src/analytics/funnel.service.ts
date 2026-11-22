@@ -47,7 +47,9 @@ export class FunnelService {
       throw new BadRequestException({ error: "invalid_event", message: (e as Error).message });
     }
     const metaHash = hashMeta(meta, this.salt);
-    await this.prisma.withContext({ role: user.role, userId: user.id }, (tx) =>
+    // فونل صرفاً telemetry ناشناس است؛ ثبت توسط SYSTEM انجام میشود چون policy
+    // خواندن فونل مختص ادمین است و INSERT ... RETURNING با نقش کاربر RLS میخورد.
+    await this.prisma.withContext({ role: "SYSTEM" }, (tx) =>
       tx.funnelEvent.create({ data: { anonymousId: anon, step: input.step, metaHash } }),
     );
     return { ok: true };

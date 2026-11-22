@@ -1,7 +1,7 @@
-import { Logger } from "@nestjs/common";
+import { Inject, Injectable, Logger } from "@nestjs/common";
 import type { AuthUser } from "../common/decorators";
 import { RefundService } from "./refund.service";
-import type { RefundWorkerConfig } from "./refund-worker.config";
+import { REFUND_WORKER_CONFIG, type RefundWorkerConfig } from "./refund-worker.config";
 
 /** شناسهٔ SYSTEM برای ثبت audit — هیچ کاربر واقعیای با این id وجود ندارد.
  * RefundService اگر dual-approval لازم باشد، بدون تأیید معتبر تماس درگاه نمیزند ⇒ worker نمیتواند چهارچشمی را دور بزند.
@@ -21,12 +21,13 @@ export interface RefundWorkerResult {
  * M4: اجرای خودکار استردادهای تأییدشده — پشت feature flag، بدون retry روی نتیجهٔ مبهم.
  * تمام نوشتها از مسیر RefundService.execute میگذرند (claim اتمیک + RLS + Audit + Outbox).
  */
+@Injectable()
 export class RefundWorkerService {
   private readonly log = new Logger(RefundWorkerService.name);
 
   constructor(
     private readonly refunds: RefundService,
-    private readonly cfg: RefundWorkerConfig,
+    @Inject(REFUND_WORKER_CONFIG) private readonly cfg: RefundWorkerConfig,
   ) {}
 
   async run(now: Date = new Date()): Promise<RefundWorkerResult> {
