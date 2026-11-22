@@ -12,7 +12,7 @@ services:
     networks: [backend]
     restart: unless-stopped
   promtail:
-    image: grafana/promtail:2.9.8
+    image: grafana/promtail:3.6.8
     command: ["-config.file=/etc/promtail/promtail.yml"]
     volumes:
       - "./infra/monitoring/promtail.yml:/etc/promtail/promtail.yml:ro"
